@@ -22,28 +22,49 @@
     return window.location.pathname.startsWith("/maps") || window.location.hostname.startsWith("maps.");
   }
 
-  function extractExternalUrl(anchor) {
+  function extractExternalUrl(anchor, onMaps) {
     const raw = anchor.getAttribute("href") || "";
-    if (!raw || raw.startsWith("#") || raw.startsWith("javascript:")) return null;
+    const aria = anchor.getAttribute("aria-label") || "";
 
-    let href = raw;
-    try {
-      const parsed = new URL(href, window.location.origin);
-      // Unwrap Google redirect URLs (/url?q=https://...)
-      if ((parsed.hostname.includes("google.") && parsed.pathname === "/url") || parsed.searchParams.get("q")) {
-        const q = parsed.searchParams.get("q") || parsed.searchParams.get("url");
-        if (q && q.startsWith("http")) {
-          href = q;
+    // 1. Try parsing href and unwrapping Google /url and Sponsored /aclk ad redirects
+    if (raw && !raw.startsWith("#") && !raw.startsWith("javascript:")) {
+      let href = raw;
+      try {
+        const parsed = new URL(href, window.location.origin);
+        if (parsed.hostname.includes("google.") || parsed.hostname.includes("googleadservices.")) {
+          const unwrapped =
+            parsed.searchParams.get("adurl") ||
+            parsed.searchParams.get("q") ||
+            parsed.searchParams.get("url") ||
+            parsed.searchParams.get("dest_url");
+          if (unwrapped && unwrapped.startsWith("http")) {
+            href = unwrapped;
+          }
         }
+        const target = new URL(href);
+        if (target.protocol === "http:" || target.protocol === "https:") {
+          const host = target.hostname.toLowerCase();
+          if (!IGNORED_HOSTS.some((h) => host === h || host.endsWith("." + h))) {
+            return target.href;
+          }
+        }
+      } catch {
+        // Fall through to Maps aria-label/text domain fallback
       }
-      const target = new URL(href);
-      if (target.protocol !== "http:" && target.protocol !== "https:") return null;
-      const host = target.hostname.toLowerCase();
-      if (IGNORED_HOSTS.some((h) => host === h || host.endsWith("." + h))) return null;
-      return target.href;
-    } catch {
-      return null;
     }
+
+    // 2. Fallback for Google Maps Sponsored pins (which often hide the domain in aria-label or row text)
+    if (onMaps) {
+      const mAria = aria.match(/Website:\s*([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+      if (mAria) return `https://${mAria[1]}`;
+      const txt = (anchor.textContent || "").trim();
+      const mTxt = txt.match(/^([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$/);
+      if (mTxt && !IGNORED_HOSTS.some((h) => mTxt[1].toLowerCase().endsWith(h))) {
+        return `https://${mTxt[1]}`;
+      }
+    }
+
+    return null;
   }
 
   function createBadge(result) {
@@ -89,10 +110,10 @@
 
   async function processCandidateLinks() {
     const onMaps = isMapsPage();
-    // On Google Maps, target ONLY the primary Website row (avoids duplicate hover icon button)
+    // On Google Maps, match both organic (data-item-id="authority") AND Sponsored Website rows
     const selectors = onMaps
-      ? 'a[data-item-id="authority"]'
-      : 'div#search a[href^="http"], div#tads a[href^="http"], a[href^="/url?"]';
+      ? 'a[data-item-id="authority"], button[data-item-id="authority"], a[aria-label^="Website:"], a[aria-label*="Website"], button[aria-label^="Website:"]'
+      : 'div#search a[href^="http"], div#tads a[href^="http"], a[href^="/url?"], a[href*="/aclk"]';
 
     const anchors = Array.from(document.querySelectorAll(selectors))
       .filter((a) => !a.hasAttribute(PROCESSED_ATTR))
@@ -102,12 +123,17 @@
 
     for (const anchor of anchors) {
       anchor.setAttribute(PROCESSED_ATTR, "1");
-      const targetUrl = extractExternalUrl(anchor);
+      const targetUrl = extractExternalUrl(anchor, onMaps);
       if (!targetUrl) continue;
 
-      // Prevent duplicate badges inside the same Maps row or link container
-      const rowContainer = anchor.closest(".RcCsl, .AeaXub") || anchor.parentElement;
+      // Prevent duplicate badges inside the same Maps row (e.g. main row + circular open-website button)
+      const rowContainer = onMaps
+        ? (anchor.closest(".RcCsl, .AeaXub, .CsEnBe") || anchor.parentElement?.parentElement || anchor.parentElement)
+        : anchor.parentElement;
       if (rowContainer && rowContainer.querySelector(".scamshield-badge")) continue;
+
+      // On Maps, skip tiny circular icon-only buttons when a text label row exists
+      if (onMaps && !(anchor.textContent || "").trim()) continue;
 
       // Only badge visible meaningful links on Search
       if (!onMaps && !anchor.querySelector("h3") && !anchor.closest("#tads")) continue;
@@ -132,7 +158,7 @@
             if (h3) {
               h3.appendChild(badge);
             } else if (onMaps) {
-              const textEl = anchor.querySelector(".Io6YTe") || anchor;
+              const textEl = anchor.querySelector(".Io6YTe, .rogA2c") || anchor;
               textEl.appendChild(badge);
             } else {
               anchor.insertAdjacentElement("afterend", badge);
