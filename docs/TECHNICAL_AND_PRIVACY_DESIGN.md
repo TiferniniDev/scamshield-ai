@@ -52,3 +52,4 @@ Privacy is built directly into the data flow—not added as an afterthought:
 | **Proactive Patrol (#1)** | Invasive user-device monitoring. | **100% Public Infrastructure Only:** Patrol inspects purely public Maps business links, Search listings, and public SSL Certificate Transparency logs—never touching citizen devices or GPS. |
 | **AI Model Inference** | Sending citizen reports to foreign third-party LLM APIs violates data sovereignty. | **100% Local On-Prem ML:** All model weights and feature extractors run locally with zero external AI API calls. |
 | **ISP / Platform Takedown Sharing** | Sharing raw citizen complaints leaks reporter identities. | **Structured `SCAMSHIELD-TAKEDOWN-V1` JSON** includes an explicit `privacy_compliance` attestation certifying zero reporter identity and PII redaction prior to export. |
+

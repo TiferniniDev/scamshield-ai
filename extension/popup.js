@@ -30,7 +30,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       title.style.fontWeight = "800";
       title.style.marginBottom = "6px";
       title.style.color = res.verdict === "FRAUD" ? "#f87171" : res.verdict === "SUSPICIOUS" ? "#fbbf24" : "#34d399";
-      title.textContent = `${res.verdict} (${res.risk_score}/100)`;
+      title.textContent = res.verdict === "FRAUD"
+        ? "Fraud — High Risk"
+        : res.verdict === "SUSPICIOUS"
+          ? "Suspicious — Use Caution"
+          : "Safe — Verified Link";
 
       const en = document.createElement("div");
       en.textContent = (res.reasons_en && res.reasons_en[0]) || "";

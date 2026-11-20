@@ -1,7 +1,8 @@
 """
 ScamShield AI - Lightweight Local ML Model Trainer
-Trains an explainable RandomForest + GradientBoosting ensemble on UAE-focused
-and global phishing/benign URL patterns, saving model.joblib + metrics.json.
+Includes realistic long-URL news articles, international newspapers, government portals,
+and local businesses as benign samples so the model learns genuine fraud indicators
+instead of falsely flagging long article slugs.
 """
 import json
 import os
@@ -42,12 +43,11 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
     benign_urls: List[str] = []
     fraud_urls: List[str] = []
 
-    # 1. Official UAE Government, Banking, Telecom, Transport & Trusted Global URLs
+    # 1A. Official UAE Government, Banking, Telecom, Transport & Restricted .gov/.edu domains
     safe_paths = [
         "", "/", "/en", "/ar", "/en/services", "/ar/home", "/contact-us",
         "/about", "/help/faq", "/news/2026/update", "/locations/abu-dhabi",
-        "/personal/accounts", "/search?q=abu+dhabi", "/branches", "/careers",
-        "/en/eservices/traffic", "/products/home", "/maps/place/Abu+Dhabi",
+        "/personal/accounts", "/branches", "/en/eservices/traffic",
     ]
     for brand in UAE_BRANDS:
         for dom in brand["official_domains"]:
@@ -55,17 +55,50 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
                 benign_urls.append(f"https://{dom}{p}")
                 benign_urls.append(f"https://www.{dom}{p}")
 
+    extra_gov_domains = [
+        "mohre.gov.ae", "mofa.gov.ae", "doh.gov.ae", "dmt.gov.ae", "adec.ac.ae",
+        "dubaipolice.gov.ae", "sharjahpolice.gov.ae", "tdra.gov.ae", "tax.gov.ae",
+        "gov.uk", "usa.gov", "ec.europa.eu",
+    ]
+    for gd in extra_gov_domains:
+        for p in safe_paths[:6]:
+            benign_urls.append(f"https://{gd}{p}")
+
+    # 1B. Realistic Long-URL News Articles, Newspapers, Sports, Blogs & Social Accounts
+    news_domains = [
+        "timesofindia.indiatimes.com", "gulfnews.com", "khaleejtimes.com",
+        "thenationalnews.com", "bbc.com", "reuters.com", "aljazeera.com",
+        "arabnews.com", "theguardian.com", "nytimes.com", "espn.com",
+        "forbes.com", "ndtv.com", "thehindu.com", "arabianbusiness.com",
+        "dailyherald-world.com", "metro-chronicle.org", "gulf-observer.net",
+        "middleeast-journal.com", "global-sports-wire.com", "tech-briefing.co",
+    ]
+    news_slugs = [
+        "/sports/mma/abu-dhabi-police-confirm-10-arrests-after-event/articleshow/{n}.cms",
+        "/uae/transport/abu-dhabi-announces-new-traffic-safety-campaign-2026-{n}",
+        "/world/middle-east/uae-central-bank-releases-quarterly-report-{n}.html",
+        "/business/banking/first-abu-dhabi-bank-expands-digital-services/{n}",
+        "/news/2026/11/emirates-post-launches-smart-parcel-lockers-{n}",
+        "/lifestyle/travel/top-15-beaches-and-resorts-in-abu-dhabi-uae-{n}",
+        "/technology/ai/42-abu-dhabi-hosts-cybersecurity-hackathon-2026-{n}",
+        "/opinion/how-salik-and-darb-tolls-improved-city-commutes-{n}",
+    ]
+    for _ in range(900):
+        nd = rng.choice(news_domains)
+        slug = rng.choice(news_slugs).format(n=rng.randint(100000, 99999999))
+        benign_urls.append(f"https://{nd}{slug}")
+
     for dom in sorted(TRUSTED_GLOBAL_DOMAINS):
-        for _ in range(12):
+        for _ in range(6):
             p = rng.choice(safe_paths)
-            prefix = rng.choice(["", "www.", "m.", "support.", "en.", "ae."])
+            prefix = rng.choice(["", "www."])
             benign_urls.append(f"https://{prefix}{dom}{p}")
 
-    # Legit UAE local business websites (clinics, cafes, hotels, real estate, car rentals)
+    # 1C. Legitimate Local UAE Businesses (including realistic hyphens & longer product pages)
     biz_words_1 = [
         "alreem", "yas", "corniche", "saadiyat", "khalifa", "alain", "marina",
-        "capital", "emirates", "gulf", "oasis", "palm", "desert", "pearl",
-        "falcon", "horizon", "emerald", "royal", "golden", "sunset", "harbor",
+        "capital", "gulf", "oasis", "palm", "desert", "pearl", "falcon",
+        "horizon", "emerald", "royal", "golden", "sunset", "harbor", "albahar",
     ]
     biz_words_2 = [
         "dental", "clinic", "cafe", "bakery", "hotel", "resort", "motors",
@@ -73,35 +106,40 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
         "gallery", "kitchen", "grill", "bistro", "optical", "salon", "vet",
         "properties", "logistics", "engineering", "consulting", "academy",
     ]
+    biz_paths = [
+        "", "/about-us", "/book-appointment", "/menu/abu-dhabi-corniche",
+        "/locations/al-reem-island", "/services/family-care-2026",
+        "/products/item-1248-classic-collection", "/contact",
+    ]
     safe_tlds = ["ae", "com", "com.ae", "org", "net", "co"]
-    for _ in range(1400):
+    for _ in range(1100):
         w1 = rng.choice(biz_words_1)
         w2 = rng.choice(biz_words_2)
         sep = rng.choice(["", "-"])
         tld = rng.choice(safe_tlds)
-        path = rng.choice(safe_paths)
+        path = rng.choice(biz_paths)
         benign_urls.append(f"https://www.{w1}{sep}{w2}.{tld}{path}")
 
-    # 2. Fraudulent & Phishing URLs (UAE Impersonation, Maps Hijacks, Malvertising, Payment Harvest)
+    # 2. Fraudulent & Phishing URLs
     lure_tokens = [
         "verify", "pay", "fines", "fine-pay", "secure", "login", "update",
         "kyc", "portal", "online", "support", "helpdesk", "refund", "claim",
         "clearance", "parcel", "toll", "recharge", "mokhalafat", "tasdeed",
-        "billing", "card-verify", "otp-check", "account-alert", "urgent",
+        "billing", "card-verify", "otp-check", "urgent",
     ]
     fraud_paths = [
-        "/verify/login", "/pay/traffic-fine", "/en/card-payment", "/otp/confirm",
+        "/verify/login", "/pay/traffic-fine", "/en/card-verify", "/otp/confirm",
         "/update-emirates-id", "/secure/checkout", "/billing/pay-now?ref=8821",
-        "/uae/account/verify?session=99182736451234567890", "/fine-settlement",
-        "/customs/fee-pay", "/parcel/reschedule-payment", "/bank/kyc-update",
-        "/portal/signin.php", "/auth/uaepass-login", "/customer-care/pay",
+        "/uae/account/verify?session=99182736451234567890", "/fine-pay",
+        "/customs-fee/pay-now", "/parcel-pay/reschedule", "/bank/kyc-update",
+        "/portal/signin.php", "/auth/uaepass-login", "/customer-care/pay-now",
     ]
     bad_tlds = sorted(SUSPICIOUS_TLDS) + ["com", "net", "org", "co"]
     cloud_hosts = sorted(ABUSED_CLOUD_HOSTS)
     shorteners = sorted(URL_SHORTENERS)
 
-    # Pattern A: Direct UAE brand impersonation on sketchy TLDs & hyphens
-    for _ in range(900):
+    # Pattern A: Direct UAE brand impersonation
+    for _ in range(950):
         brand = rng.choice(UAE_BRANDS)
         kw = rng.choice(brand["keywords"])
         lure = rng.choice(lure_tokens)
@@ -110,11 +148,10 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
         sep = rng.choice(["-", ".", ""])
         num = rng.choice(["", str(rng.randint(10, 999)), "247", "2026"])
         host = f"{kw}{sep}{lure}{num}.{tld}"
-        path = rng.choice(fraud_paths)
-        fraud_urls.append(f"{scheme}://{host}{path}")
+        fraud_urls.append(f"{scheme}://{host}{rng.choice(fraud_paths)}")
 
-    # Pattern B: Cloud-hosted zero-day phishing (vercel.app, pages.dev, firebaseapp)
-    for _ in range(450):
+    # Pattern B: Cloud-hosted zero-day phishing
+    for _ in range(500):
         brand = rng.choice(UAE_BRANDS)
         kw = rng.choice(brand["keywords"])
         lure = rng.choice(lure_tokens)
@@ -122,41 +159,40 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
         sub = f"{kw}-{lure}-{rng.randint(10, 999)}"
         fraud_urls.append(f"https://{sub}.{cloud}{rng.choice(fraud_paths)}")
 
-    # Pattern C: Typosquatting & Homoglyph / Leetspeak / Punycode impersonation
+    # Pattern C: Homoglyph / Punycode / Typosquatting
     typos = [
-        ("adpolice", ["adp0lice", "adpo1ice", "adpolicce", "ad-pol1ce", "xn--adplice-9za"]),
-        ("uaepass", ["uaepas5", "uaepasss", "uae-p4ss", "xn--uaepass-8ya"]),
-        ("salik", ["sa1ik", "sal1k", "saliik", "xn--salik-0va"]),
-        ("darb", ["d4rb", "darbb", "darb-ae", "xn--darb-2ta"]),
-        ("bankfab", ["bankf4b", "b4nkfab", "bankfabb", "fab-b4nk"]),
-        ("emiratesnbd", ["emiratesn8d", "em1ratesnbd", "emirates-n6d"]),
-        ("etisalat", ["et1salat", "etisaiat", "etisalat-0nline"]),
-        ("emiratespost", ["emiratesp0st", "em1ratespost", "emirates-p0st"]),
-        ("adnoc", ["adn0c", "4dnoc", "adnoc-p4y"]),
-        ("tamm", ["t4mm", "tammm", "tamm-abudhab1"]),
+        ["adp0lice", "adpo1ice", "adpolicce", "ad-pol1ce", "xn--adplice-9za"],
+        ["uaepas5", "uaepasss", "uae-p4ss", "xn--uaepass-8ya"],
+        ["sa1ik", "sal1k", "saliik", "xn--salik-0va"],
+        ["d4rb", "darbb", "darb-ae", "xn--darb-2ta"],
+        ["bankf4b", "b4nkfab", "bankfabb", "fab-b4nk"],
+        ["emiratesn8d", "em1ratesnbd", "emirates-n6d"],
+        ["et1salat", "etisaiat", "etisalat-0nline"],
+        ["emiratesp0st", "em1ratespost", "emirates-p0st"],
+        ["adn0c", "4dnoc", "adnoc-p4y"],
+        ["t4mm", "tammm", "tamm-abudhab1"],
     ]
-    for _ in range(400):
-        _, variants = rng.choice(typos)
-        v = rng.choice(variants)
+    for _ in range(450):
+        v = rng.choice(rng.choice(typos))
         tld = rng.choice(["com", "net", "xyz", "top", "online", "site", "click", "info"])
         suffix = rng.choice(["", "-uae", "-pay", "-secure", "-verify"])
         fraud_urls.append(f"https://{v}{suffix}.{tld}{rng.choice(fraud_paths)}")
 
-    # Pattern D: Fake Google Maps business hijacks (fake car rentals, towing, bank customer care, typing centers)
+    # Pattern D: Fake Google Maps business hijack domains
     maps_scam_stems = [
         "abudhabi-car-rental-deposit", "uae-fast-towing-pay", "bank-customer-care-uae",
         "typing-center-visa-pay", "cheap-holiday-villa-ad", "instant-loan-uae-approve",
         "crypto-dubai-profit-vip", "free-salik-waiver-claim", "ad-police-fine-discount",
         "emirates-id-express-renew", "uae-delivery-customs-fee", "abudhabi-visa-urgent",
     ]
-    for _ in range(350):
+    for _ in range(400):
         stem = rng.choice(maps_scam_stems)
         tld = rng.choice(list(SUSPICIOUS_TLDS))
         num = rng.choice(["", f"-{rng.randint(1, 99)}"])
         fraud_urls.append(f"https://{stem}{num}.{tld}{rng.choice(fraud_paths)}")
 
-    # Pattern E: IP-hosted, shortened, high-entropy random scam links & @-obfuscated links
-    for _ in range(300):
+    # Pattern E: IP-hosted, shortened, high-entropy random scam links & @-obfuscation
+    for _ in range(350):
         kind = rng.choice(["ip", "short", "random", "at"])
         if kind == "ip":
             ip = f"{rng.randint(11, 220)}.{rng.randint(0, 255)}.{rng.randint(0, 255)}.{rng.randint(1, 254)}"
@@ -175,7 +211,6 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
             tld = rng.choice(list(SUSPICIOUS_TLDS))
             fraud_urls.append(f"https://{rand_host}.{tld}{rng.choice(fraud_paths)}")
 
-    # Balance classes cleanly
     n = min(len(benign_urls), len(fraud_urls))
     rng.shuffle(benign_urls)
     rng.shuffle(fraud_urls)
@@ -185,7 +220,7 @@ def build_dataset(seed: int = 42) -> Tuple[List[str], List[int]]:
 
 
 def train():
-    print("[ScamShield ML] Generating balanced UAE + Global dataset...")
+    print("[ScamShield ML] Generating balanced UAE + Global + News/Article dataset...")
     urls, labels = build_dataset()
     X = np.array([extract_features(u)[0] for u in urls], dtype=np.float32)
     y = np.array(labels, dtype=np.int32)
@@ -219,11 +254,9 @@ def train():
     ensemble.fit(X_train, y_train)
     train_sec = round(time.perf_counter() - t0, 2)
 
-    # Evaluate on held-out test set
     y_pred = ensemble.predict(X_test)
     y_prob = ensemble.predict_proba(X_test)[:, 1]
 
-    # Measure average single-URL latency (feature extraction + inference)
     sample_urls = urls[:100]
     t_inf = time.perf_counter()
     for su in sample_urls:
@@ -231,7 +264,6 @@ def train():
         ensemble.predict_proba([feats])
     avg_latency_ms = round(((time.perf_counter() - t_inf) / len(sample_urls)) * 1000, 2)
 
-    # Extract top feature importances from RF sub-estimator
     rf_fitted = ensemble.named_estimators_["rf"]
     importances = sorted(
         zip(FEATURE_NAMES, [round(float(v), 4) for v in rf_fitted.feature_importances_]),
@@ -269,4 +301,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-

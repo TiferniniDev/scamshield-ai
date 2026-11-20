@@ -77,3 +77,4 @@ Use this slide-by-slide blueprint to build your 8–10 slide presentation in Pow
    * *Answer:* We explicitly tested this on live Google Search and built a **3-tier context verifier**: verified UAE official domains & official social handles (`@adpolicehq`) return `🟢 SAFE`, trusted news/app stores never trigger path alarms, and unverified social handles with payment lures trigger a `🟡 SUSPICIOUS` caution rather than hard-blocking the platform.
 4. **"How do you protect citizen privacy?"**
    * *Answer:* Three concrete controls implemented in code: (1) `redact_url_pii()` strips Emirates IDs, phone numbers & auth tokens before saving; (2) the DNS server logs zero client IPs and zero safe domains; (3) map pins show public business listings only, never user GPS.
+

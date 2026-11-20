@@ -98,7 +98,7 @@ async def analyze_url(req: AnalyzeRequest) -> Dict[str, Any]:
     page_title = ""
 
     # Stage 2 & 3: Domain Age (RDAP) + Mobile Sandbox DOM/Payment/Cloaking Inspector
-    if req.deep_scan and not meta["is_official_uae"] and not meta["is_trusted_global"]:
+    if req.deep_scan and not meta["is_official_uae"] and not meta.get("is_official_tld") and not meta["is_trusted_global"]:
         domain_age_days = await lookup_domain_age_days(ml_res["registered_domain"])
         if domain_age_days is not None and domain_age_days <= 30:
             score = min(100, score + 18)
@@ -124,7 +124,7 @@ async def analyze_url(req: AnalyzeRequest) -> Dict[str, Any]:
             reasons_ar.extend(live["reasons_ar"])
 
     score = max(0, min(100, int(score)))
-    if meta["is_official_uae"]:
+    if meta["is_official_uae"] or meta.get("is_official_tld"):
         verdict = "SAFE"
     elif score >= 70:
         verdict = "FRAUD"

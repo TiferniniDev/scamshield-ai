@@ -4,7 +4,7 @@
     "name_en": "Abu Dhabi Police",
     "name_ar": "شرطة أبوظبي",
     "category": "police",
-    "official_domains": ["adpolice.gov.ae"],
+    "official_domains": ["adpolice.gov.ae", "abudhabipolice.gov.ae"],
     "official_handles": ["adpolicehq", "adpolice"],
     "keywords": ["adpolice", "abudhabipolice", "ad-police", "shurta", "police-ad", "adp-fines", "mokhalafat", "traffic-ad"]
   },

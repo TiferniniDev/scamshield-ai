@@ -62,23 +62,23 @@
     span.style.cursor = "help";
 
     const reason = (result.reasons_en && result.reasons_en[0]) || "";
-    span.title = `ScamShield AI (${result.risk_score}/100): ${reason}`;
+    span.title = `ScamShield AI (${result.verdict}): ${reason}`;
 
     if (result.verdict === "FRAUD") {
       span.style.background = "#dc2626";
       span.style.color = "#ffffff";
       span.style.border = "1px solid #fecaca";
-      span.textContent = `🔴 FRAUD (${result.risk_score}/100)`;
+      span.textContent = "Fraud";
     } else if (result.verdict === "SUSPICIOUS") {
       span.style.background = "#d97706";
       span.style.color = "#ffffff";
       span.style.border = "1px solid #fde68a";
-      span.textContent = `🟡 Suspicious (${result.risk_score}/100)`;
+      span.textContent = "Suspicious";
     } else {
-      span.style.background = "#065f46";
-      span.style.color = "#d1fae5";
-      span.style.border = "1px solid #10b981";
-      span.textContent = "🟢 Safe";
+      span.style.background = "#059669";
+      span.style.color = "#ecfdf5";
+      span.style.border = "1px solid #34d399";
+      span.textContent = "Safe";
     }
     return span;
   }
@@ -128,10 +128,10 @@
                 (ev) => {
                   const reason = (res.reasons_en && res.reasons_en[0]) || "High-risk financial fraud detected.";
                   const proceed = window.confirm(
-                    `⚠️ SCAMSHIELD AI PRE-CLICK WARNING\n\n` +
-                    `This link (${res.host}) is flagged as FRAUD (${res.risk_score}/100).\n` +
+                    `SCAMSHIELD AI WARNING\n\n` +
+                    `This website (${res.host}) is flagged as FRAUD.\n` +
                     `Reason: ${reason}\n\n` +
-                    `Click Cancel to stay safe, or OK to open anyway.`
+                    `Click Cancel to stay safe, or OK to continue anyway.`
                   );
                   if (!proceed) {
                     ev.preventDefault();

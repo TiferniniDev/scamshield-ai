@@ -1,54 +1,54 @@
 {
   "model_type": "Soft-Voting Ensemble (RandomForest + GradientBoosting)",
   "privacy_mode": "100% Local On-Prem Inference (Zero External LLM/Cloud APIs)",
-  "dataset_size": 4800,
-  "train_samples": 3840,
-  "test_samples": 960,
-  "train_time_sec": 1.62,
+  "dataset_size": 5300,
+  "train_samples": 4240,
+  "test_samples": 1060,
+  "train_time_sec": 0.91,
   "accuracy": 1.0,
   "precision": 1.0,
   "recall": 1.0,
   "f1_score": 1.0,
   "roc_auc": 1.0,
-  "avg_latency_ms": 31.92,
+  "avg_latency_ms": 32.64,
   "confusion_matrix": {
-    "tn": 480,
+    "tn": 530,
     "fp": 0,
     "fn": 0,
-    "tp": 480
+    "tp": 530
   },
   "top_features": [
     {
-      "feature": "lure_keyword_count",
-      "importance": 0.2256
-    },
-    {
-      "feature": "digit_count",
-      "importance": 0.1262
+      "feature": "path_lure_count",
+      "importance": 0.2354
     },
     {
       "feature": "brand_impersonation",
-      "importance": 0.1187
+      "importance": 0.1338
     },
     {
-      "feature": "digit_ratio",
-      "importance": 0.0992
+      "feature": "host_digit_count",
+      "importance": 0.1124
+    },
+    {
+      "feature": "host_digit_ratio",
+      "importance": 0.1057
+    },
+    {
+      "feature": "host_lure_count",
+      "importance": 0.1032
     },
     {
       "feature": "is_suspicious_tld",
-      "importance": 0.0949
-    },
-    {
-      "feature": "special_char_count",
-      "importance": 0.0801
+      "importance": 0.0975
     },
     {
       "feature": "host_entropy",
-      "importance": 0.0585
+      "importance": 0.0437
     },
     {
       "feature": "is_shortener",
-      "importance": 0.0313
+      "importance": 0.0391
     }
   ]
 }

@@ -44,16 +44,19 @@ def predict_url_fast(raw_url: str) -> Dict:
     features, meta = extract_features(raw_url)
     model = get_model()
 
-    # Fast-path official UAE domains & verified official UAE social handles (zero false positives)
-    if meta["is_official_uae"]:
-        brand = meta["official_brand"]
-        if meta.get("is_official_social"):
+    # Fast-path official UAE domains, restricted .gov/.edu domains & verified official social handles
+    if meta["is_official_uae"] or meta.get("is_official_tld"):
+        brand = meta.get("official_brand")
+        if brand and meta.get("is_official_social"):
             handle = meta.get("social_handle") or ""
             reason_en = f"Verified official social account ({handle}) for {brand['name_en']} on {meta['registered_domain']}."
             reason_ar = f"حساب رسمي موثق ({handle}) لـ {brand['name_ar']} على منصة {meta['registered_domain']}."
-        else:
+        elif brand:
             reason_en = f"Verified official UAE domain for {brand['name_en']} ({meta['registered_domain']})."
             reason_ar = f"نطاق إماراتي رسمي موثق لـ {brand['name_ar']} ({meta['registered_domain']})."
+        else:
+            reason_en = f"Verified restricted government or official institution domain ({meta['host']})."
+            reason_ar = f"نطاق حكومي أو مؤسسي رسمي موثق ({meta['host']})."
         return {
             "url": redacted_url,
             "host": meta["host"],
@@ -63,8 +66,8 @@ def predict_url_fast(raw_url: str) -> Dict:
             "verdict": "SAFE",
             "impersonated_brand_en": None,
             "impersonated_brand_ar": None,
-            "verified_entity_en": brand["name_en"],
-            "verified_entity_ar": brand["name_ar"],
+            "verified_entity_en": brand["name_en"] if brand else "Official Government Domain",
+            "verified_entity_ar": brand["name_ar"] if brand else "جهة حكومية رسمية",
             "reasons_en": [reason_en],
             "reasons_ar": [reason_ar],
             "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
