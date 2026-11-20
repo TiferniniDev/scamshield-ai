@@ -48,17 +48,21 @@
 
   function createBadge(result) {
     const span = document.createElement("span");
+    span.className = "scamshield-badge";
     span.style.display = "inline-flex";
     span.style.alignItems = "center";
     span.style.gap = "4px";
     span.style.marginLeft = "8px";
-    span.style.padding = "2px 8px";
+    span.style.marginRight = "6px";
+    span.style.padding = "2px 9px";
     span.style.borderRadius = "999px";
     span.style.fontSize = "11px";
     span.style.fontWeight = "700";
     span.style.fontFamily = "-apple-system, BlinkMacSystemFont, sans-serif";
     span.style.verticalAlign = "middle";
     span.style.lineHeight = "1.4";
+    span.style.flexShrink = "0";
+    span.style.whiteSpace = "nowrap";
     span.style.cursor = "help";
 
     const reason = (result.reasons_en && result.reasons_en[0]) || "";
@@ -85,8 +89,9 @@
 
   async function processCandidateLinks() {
     const onMaps = isMapsPage();
+    // On Google Maps, target ONLY the primary Website row (avoids duplicate hover icon button)
     const selectors = onMaps
-      ? 'a[data-item-id="authority"], a[aria-label*="Website"], a[href^="http"]'
+      ? 'a[data-item-id="authority"]'
       : 'div#search a[href^="http"], div#tads a[href^="http"], a[href^="/url?"]';
 
     const anchors = Array.from(document.querySelectorAll(selectors))
@@ -100,7 +105,11 @@
       const targetUrl = extractExternalUrl(anchor);
       if (!targetUrl) continue;
 
-      // Only badge visible meaningful links (headings on Search or Website buttons on Maps)
+      // Prevent duplicate badges inside the same Maps row or link container
+      const rowContainer = anchor.closest(".RcCsl, .AeaXub") || anchor.parentElement;
+      if (rowContainer && rowContainer.querySelector(".scamshield-badge")) continue;
+
+      // Only badge visible meaningful links on Search
       if (!onMaps && !anchor.querySelector("h3") && !anchor.closest("#tads")) continue;
 
       try {
@@ -114,10 +123,17 @@
 
         await new Promise((resolve) =>
           requestAnimationFrame(() => {
+            if (rowContainer && rowContainer.querySelector(".scamshield-badge")) {
+              resolve();
+              return;
+            }
             const badge = createBadge(res);
             const h3 = anchor.querySelector("h3");
             if (h3) {
               h3.appendChild(badge);
+            } else if (onMaps) {
+              const textEl = anchor.querySelector(".Io6YTe") || anchor;
+              textEl.appendChild(badge);
             } else {
               anchor.insertAdjacentElement("afterend", badge);
             }
