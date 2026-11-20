@@ -576,7 +576,7 @@
         document.getElementById("kpi-lat").textContent = `${m.avg_latency_ms}ms`;
       }
       const aiLayer = stats.gemini_enabled
-        ? "Active (Gemini 2.5 Flash Free Tier — receives PII-scrubbed URLs only)"
+        ? "Active (Gemini 3.1 Flash Lite — receives PII-scrubbed URLs only)"
         : "Optional (Add free GEMINI_API_KEY in .env — running 100% local ML)";
       document.getElementById("model-info").innerHTML = `
         <div><strong>Detection Engine:</strong> ${escapeHtml(m.model_type || "Local Ensemble ML")} (${m.avg_latency_ms || 0}ms/URL)</div>
