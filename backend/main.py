@@ -7,24 +7,28 @@ Powers:
   - Bilingual Mobile DNS Block Page (/blocked)
   - Safe Synthetic Demo Scam Page (/demo-scam)
 """
+import base64
 import os
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from dnslib import QTYPE, RCODE, RR, A, DNSRecord
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
 from backend.database import (
     approve_and_block_threat,
     block_domain_direct,
+    check_domain_blocked,
     dismiss_threat,
     get_stats,
     get_threat,
     init_db,
     list_blocked_domains,
     list_threats,
+    record_dns_event,
     unblock_domain,
     upsert_threat,
 )
@@ -296,14 +300,71 @@ def serve_mobile_setup():
     return HTMLResponse("<h1>ScamShield AI Mobile Setup</h1>")
 
 
+def _resolve_doh_wire(raw_wire: bytes) -> bytes:
+    """
+    RFC 8484 DNS-over-HTTPS (DoH) resolver sharing the exact same Police/Bot blocklist
+    & local fast ML zero-day filter as Pillar #2 UDP DNS Shield.
+    """
+    req = DNSRecord.parse(raw_wire)
+    qname = str(req.q.qname).rstrip(".").lower()
+    qtype = QTYPE[req.q.qtype]
+    reply = req.reply()
+
+    # 1. Check active blocklist
+    blocked_entry = check_domain_blocked(qname)
+    if blocked_entry:
+        record_dns_event(blocked=True, domain=blocked_entry["domain"])
+        reply.header.rcode = RCODE.NXDOMAIN
+        return reply.pack()
+
+    # 2. Zero-day fast ML check for high-confidence UAE brand impersonators
+    if qtype in ("A", "AAAA") and "." in qname and not qname.endswith((".local", ".arpa", ".lan")):
+        pred = predict_url_fast(f"https://{qname}")
+        if pred["verdict"] == "FRAUD" and pred["ml_score"] >= 92 and pred["impersonated_brand_en"]:
+            block_domain_direct(
+                qname,
+                reason_en=pred["reasons_en"][0],
+                reason_ar=pred["reasons_ar"][0],
+                impersonated_brand=pred["impersonated_brand_en"],
+                blocked_by="ScamShield AI Real-Time DoH",
+            )
+            record_dns_event(blocked=True, domain=qname)
+            reply.header.rcode = RCODE.NXDOMAIN
+            return reply.pack()
+
+    # 3. Safe domain -> forward privately upstream (zero domain/IP logging!)
+    record_dns_event(blocked=False)
+    try:
+        return req.send("1.1.1.1", 53, timeout=2.5)
+    except Exception:
+        reply.header.rcode = RCODE.SERVFAIL
+        return reply.pack()
+
+
+@app.get("/dns-query")
+async def doh_get(dns: str = Query(...)):
+    padding = "=" * (-len(dns) % 4)
+    raw = base64.urlsafe_b64decode(dns + padding)
+    ans = bytes(_resolve_doh_wire(raw))
+    return Response(content=ans, media_type="application/dns-message")
+
+
+@app.post("/dns-query")
+async def doh_post(request: Request):
+    raw = await request.body()
+    ans = bytes(_resolve_doh_wire(raw))
+    return Response(content=ans, media_type="application/dns-message")
+
+
 @app.get("/scamshield.mobileconfig")
-def serve_ios_dns_profile(dns_host: str = Query("dns.scamshield.local")):
+def serve_ios_dns_profile(request: Request, dns_host: Optional[str] = Query(None)):
     """
-    1-Tap Apple iOS DNS Configuration Profile (.mobileconfig).
-    Allows non-technical iPhone users to activate ScamShield DNS with a single link tap.
+    1-Tap Apple iOS DNS-over-HTTPS Configuration Profile (.mobileconfig).
+    Automatically embeds the live HTTPS host (e.g., Cloudflare Tunnel) so non-technical
+    iPhone users can activate ScamShield DNS with a single link tap!
     """
-    from fastapi.responses import Response
-    safe_host = "".join(c for c in dns_host if c.isalnum() or c in ".-") or "dns.scamshield.local"
+    raw_host = dns_host or request.headers.get("x-forwarded-host") or request.headers.get("host") or "dns.scamshield.local"
+    safe_host = "".join(c for c in raw_host.split(":")[0] if c.isalnum() or c in ".-") or "dns.scamshield.local"
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -327,7 +388,7 @@ def serve_ios_dns_profile(dns_host: str = Query("dns.scamshield.local")):
       <key>PayloadType</key>
       <string>com.apple.dnsSettings.managed</string>
       <key>PayloadUUID</key>
-      <string>7F42A01B-6C11-4E21-9A01-SCAMSHIELD01</string>
+      <string>7F42A01B-6C11-4E21-9A01-100000000001</string>
       <key>PayloadVersion</key>
       <integer>1</integer>
     </dict>
@@ -343,7 +404,7 @@ def serve_ios_dns_profile(dns_host: str = Query("dns.scamshield.local")):
   <key>PayloadType</key>
   <string>Configuration</string>
   <key>PayloadUUID</key>
-  <string>7F42A01B-6C11-4E21-9A01-SCAMSHIELD00</string>
+  <string>7F42A01B-6C11-4E21-9A01-100000000000</string>
   <key>PayloadVersion</key>
   <integer>1</integer>
 </dict>
