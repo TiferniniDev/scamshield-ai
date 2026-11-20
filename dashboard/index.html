@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>ScamShield AI — Proactive Anti-Fraud Command Center</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    :root {
+      --bg: #060b16;
+      --panel: #0d1526;
+      --panel-2: #111c33;
+      --border: #1e2d4d;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --cyan: #38bdf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      line-height: 1.45;
+    }
+    /* Header */
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 24px;
+      background: linear-gradient(90deg, #091224 0%, #0e1a33 100%);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 900;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: grid; place-items: center; font-size: 22px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: 0.02em; }
+    .brand .sub { font-size: 12px; color: var(--muted); }
+    .top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #10b981;
+      animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.35); }
+    }
+    .btn {
+      padding: 8px 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
+      border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+      cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn:hover { background: #192949; border-color: #3b5998; }
+    .btn-primary { background: #0284c7; border-color: #38bdf8; color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-danger { background: rgba(239, 68, 68, 0.18); border-color: #ef4444; color: #fecaca; }
+    .btn-danger:hover { background: #dc2626; color: #fff; }
+    .btn-success { background: rgba(16, 185, 129, 0.16); border-color: #10b981; color: #6ee7b7; }
+    .btn-sm { padding: 5px 10px; font-size: 11.5px; border-radius: 7px; }
+
+    /* Main Container */
+    .container { max-width: 1460px; margin: 0 auto; padding: 18px 22px 40px; }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .kpi {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .kpi-label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-val { font-size: 28px; font-weight: 800; margin: 4px 0 2px; }
+    .kpi-sub { font-size: 11.5px; color: var(--muted); }
+
+    /* Scanner Box */
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .card-title { font-size: 15px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .scan-form { display: flex; flex-wrap: wrap; gap: 10px; }
+    .scan-input {
+      flex: 1; min-width: 260px; padding: 11px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: #070d1b; color: #fff; font-size: 14px;
+    }
+    .scan-input:focus { outline: 2px solid var(--cyan); border-color: var(--cyan); }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip {
+      background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 10px; border-radius: 999px; font-size: 11.5px; cursor: pointer;
+    }
+    .chip:hover { color: #fff; border-color: var(--cyan); }
+    .scan-result {
+      margin-top: 14px; padding: 14px; border-radius: 12px; display: none;
+      border: 1px solid var(--border); background: #091224;
+    }
+    .scan-result.show { display: block; }
+
+    /* Split Workspace */
+    .split-grid {
+      display: grid; grid-template-columns: 1.05fr 1.25fr; gap: 16px; margin-bottom: 16px;
+    }
+    @media (max-width: 1040px) {
+      .split-grid { grid-template-columns: 1fr; }
+    }
+    #abu-dhabi-map {
+      width: 100%; height: 500px; border-radius: 12px; border: 1px solid var(--border);
+      background: #081021;
+    }
+    /* Free OpenStreetMap tiles styled cleanly for dark command UI (no API key needed) */
+    #abu-dhabi-map .leaflet-tile-pane {
+      filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(90%) saturate(85%);
+    }
+
+    /* Filter Pills */
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .pill {
+      padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+      cursor: pointer;
+    }
+    .pill.active { background: #0284c7; border-color: #38bdf8; color: #fff; }
+
+    /* Threat List */
+    .threat-list {
+      max-height: 452px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+      padding-right: 4px;
+    }
+    .threat-item {
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .threat-item.fraud { border-left: 4px solid var(--red); }
+    .threat-item.blocked { border-left: 4px solid var(--purple); }
+    .threat-item.safe { border-left: 4px solid var(--green); }
+    .threat-item.suspicious { border-left: 4px solid var(--amber); }
+
+    .threat-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .host-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; font-weight: 700; color: #f8fafc; word-break: break-all; }
+    .source-lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .badge {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+      border: 1px solid transparent; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .b-fraud { background: rgba(239, 68, 68, 0.16); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; }
+    .b-safe { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.45); color: #6ee7b7; }
+    .b-susp { background: rgba(245, 158, 11, 0.16); border-color: rgba(245, 158, 11, 0.45); color: #fcd34d; }
+    .b-blocked { background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.5); color: #d8b4fe; }
+    .b-src { background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.35); color: #7dd3fc; }
+    .b-priv { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.35); color: #34d399; }
+
+    .reason-line { font-size: 12px; color: #cbd5e1; }
+    .reason-ar { direction: rtl; font-size: 12px; color: #94a3b8; }
+    .threat-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 2px; }
+
+    /* Bottom Grid */
+    .bottom-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+    @media (max-width: 960px) { .bottom-grid { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    /* Native Modal Dialog */
+    dialog {
+      background: var(--panel); color: var(--text); border: 1px solid var(--cyan);
+      border-radius: 16px; max-width: 680px; width: 92vw; padding: 20px;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.7);
+    }
+    dialog::backdrop { background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(4px); }
+    pre.dossier-json {
+      background: #060b16; border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px; font-size: 12px; overflow: auto; max-height: 360px; color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">🛡️</div>
+      <div>
+        <h1>SCAMSHIELD AI — Proactive Anti-Fraud Command Center</h1>
+        <div class="sub">Search, Maps &amp; Mobile Private DNS Threat Intelligence • منصة درع الحماية الذكي لمكافحة الاحتيال</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="live-pill"><span class="dot"></span> LIVE SHIELD ACTIVE</span>
+      <button class="btn btn-primary" id="btn-patrol" type="button">🛰️ Run Patrol Sweep (#1)</button>
+      <a class="btn" href="/demo-scam" target="_blank" rel="noopener">🧪 Demo Scam Page</a>
+      <a class="btn" href="/blocked" target="_blank" rel="noopener">📱 Mobile Block Page</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- KPI Telemetry Cards -->
+    <section class="kpi-grid" aria-label="Live Security Telemetry">
+      <div class="kpi">
+        <div class="kpi-label">Fraud Sites Caught</div>
+        <div class="kpi-val" id="kpi-fraud" style="color: var(--red);">0</div>
+        <div class="kpi-sub">Out of <span id="kpi-total">0</span> links analyzed</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Google Maps &amp; Search (#1)</div>
+        <div class="kpi-val" id="kpi-patrol" style="color: var(--cyan);">0</div>
+        <div class="kpi-sub"><span id="kpi-maps">0</span> Maps pins • <span id="kpi-search">0</span> Search • <span id="kpi-cert">0</span> CT Logs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Citizen Bot Reports (#3)</div>
+        <div class="kpi-val" id="kpi-bot" style="color: var(--amber);">0</div>
+        <div class="kpi-sub">Live from <strong>@ScamShieldAD_bot</strong></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Mobile DNS Blocks (#2)</div>
+        <div class="kpi-val" id="kpi-dns" style="color: var(--purple);">0</div>
+        <div class="kpi-sub"><span id="kpi-hits">0</span> mobile threats intercepted</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Privacy &amp; Local AI</div>
+        <div class="kpi-val" id="kpi-pii" style="color: var(--green);">0</div>
+        <div class="kpi-sub">PII links scrubbed • <span id="kpi-lat">~30ms</span></div>
+      </div>
+    </section>
+
+    <!-- Instant Live URL Analyzer -->
+    <section class="card" aria-label="Instant URL Analyzer">
+      <div class="card-header">
+        <h2 class="card-title">⚡ Live Multi-Signal Link &amp; Maps URL Analyzer</h2>
+        <span class="badge b-priv">🔒 100% Local UAE AI • Auto PII Redaction</span>
+      </div>
+      <form class="scan-form" id="scan-form">
+        <input
+          class="scan-input"
+          id="scan-url"
+          type="text"
+          placeholder="Paste any suspicious URL from Google Maps, Search, WhatsApp, or SMS..."
+          required
+        />
+        <button class="btn btn-primary" type="submit" id="btn-scan">🔍 Analyze Now</button>
+      </form>
+      <div class="presets">
+        <span style="font-size:11.5px; color:var(--muted); align-self:center;">Quick Demo Presets:</span>
+        <button class="chip" type="button" data-url="https://adpolice-fines-pay.test/pay/traffic-fine?eid=784-1990-1234567-1&phone=0501234567">🔴 Fake AD Police Fine + PII</button>
+        <button class="chip" type="button" data-url="https://uaepas5-verify.top/auth/login">🔴 Homoglyph UAE PASS</button>
+        <button class="chip" type="button" data-url="https://fab-kyc-update-247.pages.dev/card-verify">🔴 Cloud-Hosted FAB Scam</button>
+        <button class="chip" type="button" data-url="https://www.adpolice.gov.ae/en/services">🟢 Official Abu Dhabi Police</button>
+      </div>
+      <div class="scan-result" id="scan-result"></div>
+    </section>
+
+    <!-- Interactive Abu Dhabi Map + Unified Threat Triage Queue -->
+    <section class="split-grid">
+      <div class="card" style="margin-bottom:0;">
+        <div class="card-header">
+          <h2 class="card-title">🗺️ Abu Dhabi Proactive Fraud Map (Google Maps &amp; Search)</h2>
+          <div class="badges">
+            <span class="badge b-fraud">● Fraud Pin</span>
+            <span class="badge b-blocked">● DNS Blocked</span>
+            <span class="badge b-safe">● Official UAE</span>
+          </div>
+        </div>
+        <div id="abu-dhabi-map" aria-label="Interactive Abu Dhabi fraud threat map"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:0;">
+        <div class="card-header">
+          <h2 class="card-title">🚨 Live Threat Triage Queue (All 3 Pillars)</h2>
+          <span style="font-size:11.5px; color:var(--muted);" id="last-sync">Syncing...</span>
+        </div>
+        <div class="filters" id="filter-bar">
+          <button class="pill active" data-filter="all" type="button">All</button>
+          <button class="pill" data-filter="patrol_maps" type="button">🗺️ Maps (#1)</button>
+          <button class="pill" data-filter="patrol_search" type="button">🔎 Search (#1)</button>
+          <button class="pill" data-filter="patrol_certstream" type="button">📜 Cert Logs (#1)</button>
+          <button class="pill" data-filter="citizen_bot" type="button">📱 Telegram Bot (#3)</button>
+          <button class="pill" data-filter="blocked" type="button">🛡️ Blocked (#2)</button>
+        </div>
+        <div class="threat-list" id="threat-list"></div>
+      </div>
+    </section>
+
+    <!-- Bottom Row: Active Mobile DNS Blocklist + AI & Privacy Spec -->
+    <section class="bottom-grid">
+      <div class="card" style="margin-bottom:0;">
+        <div class="card-header">
+          <h2 class="card-title">🛡️ Active Mobile Private DNS Blocklist (#2)</h2>
+          <span class="badge b-blocked">Protects Google Maps, Search, Safari, Chrome &amp; SMS</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Blocked Domain</th>
+                <th>Impersonated Target</th>
+                <th>Mobile Hits Blocked</th>
+                <th>Source</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="blocked-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:0;">
+        <div class="card-header">
+          <h2 class="card-title">🧠 AI Model &amp; Privacy-by-Design Telemetry</h2>
+          <span class="badge b-priv">UAE PDPL Ready</span>
+        </div>
+        <div id="model-info" style="font-size:13px; color:#cbd5e1; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Native Forensic Takedown Dossier Modal -->
+  <dialog id="dossier-dialog">
+    <div class="card-header" style="margin-bottom:10px;">
+      <h3 class="card-title">📄 Threat Evidence &amp; ISP Takedown Dossier</h3>
+      <button class="btn btn-sm" id="btn-close-dialog" type="button">✕ Close</button>
+    </div>
+    <pre class="dossier-json" id="dossier-content"></pre>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+      <button class="btn btn-primary btn-sm" id="btn-copy-dossier" type="button">📋 Copy JSON Dossier</button>
+    </div>
+  </dialog>
+
+  <script>
+    const state = {
+      threats: [],
+      blocked: [],
+      filter: "all",
+      markers: [],
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    // Initialize Leaflet Map centered on Abu Dhabi using 100% free OpenStreetMap tiles (zero API key)
+    const map = L.map("abu-dhabi-map", { zoomControl: true }).setView([24.4667, 54.42], 11);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    const markerLayer = L.layerGroup().addTo(map);
+
+    function sourceLabel(src) {
+      const mapLbl = {
+        patrol_maps: "🗺️ Maps Patrol",
+        patrol_search: "🔎 Mobile Search",
+        patrol_certstream: "📜 CT Cert Log",
+        citizen_bot: "📱 Telegram Bot",
+        manual_scan: "⚡ Manual Scan",
+      };
+      return mapLbl[src] || src;
+    }
+
+    function renderMap() {
+      markerLayer.clearLayers();
+      state.threats.forEach((t) => {
+        if (t.lat == null || t.lng == null) return;
+        let color = "#10b981";
+        if (t.status === "blocked") color = "#a855f7";
+        else if (t.verdict === "FRAUD") color = "#ef4444";
+        else if (t.verdict === "SUSPICIOUS") color = "#f59e0b";
+
+        const circle = L.circleMarker([t.lat, t.lng], {
+          radius: t.verdict === "FRAUD" ? 9 : 7,
+          fillColor: color,
+          color: "#ffffff",
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9,
+        });
+
+        const reason = (t.reasons_en && t.reasons_en[0]) ? t.reasons_en[0] : "";
+        const popupHtml = `
+          <div style="min-width:220px; font-family:sans-serif; color:#0f172a;">
+            <div style="font-weight:800; font-size:13px; margin-bottom:4px;">${escapeHtml(t.host)}</div>
+            <div style="font-size:11.5px; color:#475569; margin-bottom:6px;">${escapeHtml(t.source_label || sourceLabel(t.source))}</div>
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">
+              Verdict: ${escapeHtml(t.verdict)} (${t.risk_score}/100) ${t.status === "blocked" ? "• BLOCKED ON DNS" : ""}
+            </div>
+            <div style="font-size:11.5px; color:#334155;">${escapeHtml(reason)}</div>
+          </div>
+        `;
+        circle.bindPopup(popupHtml);
+        circle.addTo(markerLayer);
+      });
+    }
+
+    function renderThreats() {
+      const list = document.getElementById("threat-list");
+      const filtered = state.threats.filter((t) => {
+        if (state.filter === "all") return true;
+        if (state.filter === "blocked") return t.status === "blocked";
+        return t.source === state.filter;
+      });
+
+      if (!filtered.length) {
+        list.innerHTML = `<div style="color:var(--muted); text-align:center; padding:30px;">No items in this view yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map((t) => {
+        const cls = t.status === "blocked" ? "blocked" : t.verdict.toLowerCase();
+        const verdictBadge = t.verdict === "FRAUD"
+          ? `<span class="badge b-fraud">🔴 FRAUD ${t.risk_score}/100</span>`
+          : t.verdict === "SUSPICIOUS"
+            ? `<span class="badge b-susp">🟡 SUSPICIOUS ${t.risk_score}/100</span>`
+            : `<span class="badge b-safe">🟢 SAFE ${t.risk_score}/100</span>`;
+
+        const blockBtn = t.status === "blocked"
+          ? `<span class="badge b-blocked">🛡️ Blocked on Mobile DNS</span>`
+          : (t.verdict !== "SAFE"
+              ? `<button class="btn btn-danger btn-sm" onclick="blockThreat(${t.id})">🛡️ Approve &amp; Block on DNS</button>`
+              : `<span class="badge b-safe">✅ Official / Safe</span>`);
+
+        const extras = [
+          t.impersonated_brand_en ? `<span class="badge b-fraud">🎯 ${escapeHtml(t.impersonated_brand_en)}</span>` : "",
+          t.has_payment_harvest ? `<span class="badge b-fraud">💳 Card/ID Harvest</span>` : "",
+          t.has_cloaking ? `<span class="badge b-susp">🎭 Mobile Cloaking</span>` : "",
+          t.domain_age_days != null ? `<span class="badge b-susp">📅 Age: ${t.domain_age_days}d</span>` : "",
+          t.pii_redacted ? `<span class="badge b-priv">🔒 PII Scrubbed</span>` : "",
+        ].filter(Boolean).join("");
+
+        return `
+          <article class="threat-item ${cls}">
+            <div class="threat-top">
+              <div>
+                <div class="host-name">${escapeHtml(t.host)}</div>
+                <div class="source-lbl">${escapeHtml(t.source_label || t.url)}</div>
+              </div>
+              <div class="badges">
+                <span class="badge b-src">${escapeHtml(sourceLabel(t.source))}</span>
+                ${verdictBadge}
+              </div>
+            </div>
+            ${extras ? `<div class="badges">${extras}</div>` : ""}
+            <div class="reason-line">• ${escapeHtml((t.reasons_en && t.reasons_en[0]) || "")}</div>
+            <div class="reason-ar">• ${escapeHtml((t.reasons_ar && t.reasons_ar[0]) || "")}</div>
+            <div class="threat-actions">
+              <span style="font-size:11px; color:var(--muted);">Reports: ${t.report_count} • ${escapeHtml(t.updated_at)}</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                ${blockBtn}
+                <button class="btn btn-sm" onclick="openDossier(${t.id})">📄 Dossier</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderBlocked() {
+      const tbody = document.getElementById("blocked-tbody");
+      if (!state.blocked.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted); text-align:center;">No domains blocked yet. Click "Approve & Block on DNS" above.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = state.blocked.map((b) => `
+        <tr>
+          <td class="mono" style="color:#f8fafc; font-weight:700;">${escapeHtml(b.domain)}</td>
+          <td>${escapeHtml(b.impersonated_brand || "Fraudulent Domain")}</td>
+          <td><span class="badge b-blocked">${b.hits} blocked</span></td>
+          <td style="color:var(--muted);">${escapeHtml(b.blocked_by)}</td>
+          <td><button class="btn btn-sm" onclick="unblockDomain('${escapeHtml(b.domain)}')">Unblock</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderStats(stats) {
+      document.getElementById("kpi-fraud").textContent = stats.fraud_detected;
+      document.getElementById("kpi-total").textContent = stats.total_threats_analyzed;
+      document.getElementById("kpi-patrol").textContent = stats.maps_threats + stats.search_threats + stats.certstream_early_warnings;
+      document.getElementById("kpi-maps").textContent = stats.maps_threats;
+      document.getElementById("kpi-search").textContent = stats.search_threats;
+      document.getElementById("kpi-cert").textContent = stats.certstream_early_warnings;
+      document.getElementById("kpi-bot").textContent = stats.citizen_bot_reports;
+      document.getElementById("kpi-dns").textContent = stats.active_dns_blocks;
+      document.getElementById("kpi-hits").textContent = stats.mobile_attacks_blocked;
+      document.getElementById("kpi-pii").textContent = stats.pii_urls_scrubbed;
+
+      const m = stats.model_metrics || {};
+      if (m.avg_latency_ms) {
+        document.getElementById("kpi-lat").textContent = `${m.avg_latency_ms}ms local ML`;
+      }
+      document.getElementById("model-info").innerHTML = `
+        <div><strong>Engine:</strong> ${escapeHtml(m.model_type || "Local Ensemble ML")}</div>
+        <div><strong>Evaluation:</strong> Accuracy <strong>${((m.accuracy || 0) * 100).toFixed(1)}%</strong> • Precision <strong>${((m.precision || 0) * 100).toFixed(1)}%</strong> • Recall <strong>${((m.recall || 0) * 100).toFixed(1)}%</strong> • Latency <strong>${m.avg_latency_ms || 0}ms/URL</strong></div>
+        <div><strong>Data Sovereignty:</strong> 100% local open-weights inference — zero URLs sent to foreign cloud APIs.</div>
+        <div><strong>Mobile DNS Privacy:</strong> Domain-only inspection, zero client IP logging, zero benign browsing logs (${stats.dns_queries_allowed} safe queries passed privately).</div>
+        <div><strong>Citizen Bot Privacy:</strong> Automatic regex scrubber redacts Emirates IDs, UAE phones &amp; auth tokens before storage.</div>
+      `;
+    }
+
+    async function refreshAll() {
+      try {
+        const [thRes, blRes, stRes] = await Promise.all([
+          fetch("/api/threats?limit=100").then((r) => r.json()),
+          fetch("/api/blocked-domains").then((r) => r.json()),
+          fetch("/api/stats").then((r) => r.json()),
+        ]);
+        state.threats = thRes.threats || [];
+        state.blocked = blRes.blocked_domains || [];
+        renderStats(stRes);
+        renderThreats();
+        renderMap();
+        renderBlocked();
+        document.getElementById("last-sync").textContent = "Synced " + new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error("Sync failed", e);
+      }
+    }
+
+    async function blockThreat(id) {
+      await fetch(`/api/threats/${id}/block`, { method: "POST" });
+      await refreshAll();
+    }
+
+    async function unblockDomain(domain) {
+      await fetch("/api/blocked-domains/unblock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      await refreshAll();
+    }
+
+    const dialog = document.getElementById("dossier-dialog");
+    let currentDossierText = "";
+
+    async function openDossier(id) {
+      const data = await fetch(`/api/threats/${id}/takedown`).then((r) => r.json());
+      currentDossierText = JSON.stringify(data, null, 2);
+      document.getElementById("dossier-content").textContent = currentDossierText;
+      dialog.showModal();
+    }
+
+    document.getElementById("btn-close-dialog").addEventListener("click", () => dialog.close());
+    document.getElementById("btn-copy-dossier").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(currentDossierText);
+      document.getElementById("btn-copy-dossier").textContent = "✅ Copied!";
+      setTimeout(() => {
+        document.getElementById("btn-copy-dossier").textContent = "📋 Copy JSON Dossier";
+      }, 1500);
+    });
+
+    // Filter buttons
+    document.getElementById("filter-bar").addEventListener("click", (e) => {
+      const btn = e.target.closest(".pill");
+      if (!btn) return;
+      document.querySelectorAll(".pill").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      state.filter = btn.dataset.filter;
+      renderThreats();
+    });
+
+    // Patrol sweep trigger
+    document.getElementById("btn-patrol").addEventListener("click", async () => {
+      const btn = document.getElementById("btn-patrol");
+      btn.disabled = true;
+      btn.textContent = "🛰️ Sweeping Abu Dhabi...";
+      try {
+        await fetch("/api/patrol/run", { method: "POST" });
+        await refreshAll();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🛰️ Run Patrol Sweep (#1)";
+      }
+    });
+
+    // Quick preset chips
+    document.querySelectorAll(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        document.getElementById("scan-url").value = chip.dataset.url;
+        document.getElementById("scan-form").requestSubmit();
+      });
+    });
+
+    // Live URL scan form
+    document.getElementById("scan-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("scan-url");
+      const url = input.value.trim();
+      if (!url) return;
+      const box = document.getElementById("scan-result");
+      const btn = document.getElementById("btn-scan");
+      btn.disabled = true;
+      btn.textContent = "⏳ Analyzing...";
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, source: "manual_scan", deep_scan: true, save_to_db: true }),
+        }).then((r) => r.json());
+
+        const color = res.verdict === "FRAUD" ? "var(--red)" : res.verdict === "SUSPICIOUS" ? "var(--amber)" : "var(--green)";
+        box.classList.add("show");
+        box.style.borderColor = color;
+        box.innerHTML = `
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; align-items:center; margin-bottom:8px;">
+            <div style="font-size:16px; font-weight:800; color:${color};">
+              ${res.verdict === "FRAUD" ? "🔴 HIGH-RISK FRAUD" : res.verdict === "SUSPICIOUS" ? "🟡 SUSPICIOUS" : "🟢 VERIFIED SAFE"} — ${res.risk_score}/100
+            </div>
+            <div class="badges">
+              <span class="badge b-src">⏱️ ${res.latency_ms}ms</span>
+              ${res.pii_redacted ? `<span class="badge b-priv">🔒 PII Auto-Redacted</span>` : ""}
+              ${res.has_payment_harvest ? `<span class="badge b-fraud">💳 Card/ID Harvest Detected</span>` : ""}
+              ${res.has_cloaking ? `<span class="badge b-susp">🎭 Mobile Cloaking Detected</span>` : ""}
+              ${res.threat_id && res.verdict !== "SAFE" ? `<button class="btn btn-danger btn-sm" onclick="blockThreat(${res.threat_id})">🛡️ Block on Mobile DNS</button>` : ""}
+            </div>
+          </div>
+          <div class="mono" style="font-size:12.5px; color:#cbd5e1; margin-bottom:8px;">Stored URL: ${escapeHtml(res.url)}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <div style="font-size:11.5px; color:var(--muted); font-weight:700; margin-bottom:4px;">WHY (ENGLISH)</div>
+              ${(res.reasons_en || []).map((r) => `<div class="reason-line">• ${escapeHtml(r)}</div>`).join("")}
+            </div>
+            <div style="direction:rtl;">
+              <div style="font-size:11.5px; color:var(--muted); font-weight:700; margin-bottom:4px;">التفاصيل (العربية)</div>
+              ${(res.reasons_ar || []).map((r) => `<div class="reason-ar">• ${escapeHtml(r)}</div>`).join("")}
+            </div>
+          </div>
+        `;
+        await refreshAll();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🔍 Analyze Now";
+      }
+    });
+
+    // Initial load + live 5-second sync (auto-shows incoming Telegram Bot alerts!)
+    refreshAll();
+    setInterval(refreshAll, 5000);
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ScamShield AI Guard</title>
+  <style>
+    body {
+      width: 340px; margin: 0; padding: 14px;
+      background: #060b16; color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .logo {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: grid; place-items: center; font-size: 18px;
+    }
+    h1 { font-size: 15px; margin: 0; }
+    .sub { font-size: 11px; color: #94a3b8; }
+    .card {
+      background: #0d1526; border: 1px solid #1e2d4d; border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 10px; font-size: 12px;
+    }
+    .url { font-family: monospace; color: #7dd3fc; word-break: break-all; margin-top: 4px; }
+    .btn {
+      width: 100%; padding: 9px; border-radius: 8px; border: none;
+      background: #0284c7; color: #fff; font-weight: 700; font-size: 12.5px; cursor: pointer;
+    }
+    .btn:hover { background: #0369a1; }
+    .btn-sec {
+      display: block; text-align: center; text-decoration: none; margin-top: 8px;
+      padding: 8px; border-radius: 8px; background: #111c33; border: 1px solid #1e2d4d;
+      color: #cbd5e1; font-size: 12px; font-weight: 600;
+    }
+    #result { display: none; }
+    .ar { direction: rtl; color: #94a3b8; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>ScamShield AI Guard</h1>
+      <div class="sub">Pre-Click Search &amp; Maps Protection</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="color:#94a3b8; font-size:11px;">ACTIVE TAB</div>
+    <div class="url" id="tab-url">Loading...</div>
+  </div>
+
+  <button class="btn" id="btn-scan" type="button">🔍 Deep Scan Current Page</button>
+
+  <div class="card" id="result" style="margin-top:10px;"></div>
+
+  <a class="btn-sec" href="http://127.0.0.1:8000" target="_blank" rel="noopener">
+    🖥️ Open ScamShield Command Center
+  </a>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,278 @@
+"""
+ScamShield AI - Central FastAPI Core Server
+Powers:
+  - Shared Multi-Signal AI Engine (/api/analyze)
+  - Abu Dhabi Police Command Dashboard (/)
+  - Proactive Patrol (#1), Mobile DNS Shield (#2), and Telegram Bot (#3)
+  - Bilingual Mobile DNS Block Page (/blocked)
+  - Safe Synthetic Demo Scam Page (/demo-scam)
+"""
+import os
+import time
+from typing import Any, Dict, Optional
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel
+
+from backend.database import (
+    approve_and_block_threat,
+    block_domain_direct,
+    dismiss_threat,
+    get_stats,
+    get_threat,
+    init_db,
+    list_blocked_domains,
+    list_threats,
+    unblock_domain,
+    upsert_threat,
+)
+from backend.inspector import inspect_live_page, lookup_domain_age_days
+from ml.predictor import get_model, get_model_metrics, predict_url_fast
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DASHBOARD_HTML = os.path.join(PROJECT_ROOT, "dashboard", "index.html")
+BLOCK_PAGE_HTML = os.path.join(PROJECT_ROOT, "dns_shield", "block_page.html")
+DEMO_SCAM_HTML = os.path.join(PROJECT_ROOT, "demo_scam_site", "index.html")
+
+app = FastAPI(
+    title="ScamShield AI — Proactive Anti-Fraud Platform",
+    version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class AnalyzeRequest(BaseModel):
+    url: str
+    source: str = "manual_scan"  # patrol_maps | patrol_search | patrol_certstream | citizen_bot | manual_scan
+    source_label: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    deep_scan: bool = True
+    save_to_db: bool = True
+
+
+class UnblockRequest(BaseModel):
+    domain: str
+
+
+class DirectBlockRequest(BaseModel):
+    domain: str
+    reason_en: str = "Manually blocked by ScamShield AI Operator"
+    reason_ar: str = "تم الحجب يدوياً بواسطة مشغّل نظام ScamShield AI"
+    impersonated_brand: str = ""
+
+
+@app.on_event("startup")
+def startup_event():
+    init_db()
+    get_model()
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "service": "ScamShield AI"}
+
+
+@app.post("/api/analyze")
+async def analyze_url(req: AnalyzeRequest) -> Dict[str, Any]:
+    t0 = time.perf_counter()
+
+    # Stage 1: Fast (<10ms) Local ML + Homoglyph + UAE Brand Impersonation + PII Redaction
+    ml_res = predict_url_fast(req.url)
+    score = ml_res["ml_score"]
+    reasons_en = list(ml_res["reasons_en"])
+    reasons_ar = list(ml_res["reasons_ar"])
+    meta = ml_res["meta"]
+
+    domain_age_days: Optional[int] = None
+    has_payment_harvest = False
+    has_cloaking = False
+    page_title = ""
+
+    # Stage 2 & 3: Domain Age (RDAP) + Mobile Sandbox DOM/Payment/Cloaking Inspector
+    if req.deep_scan and not meta["is_official_uae"] and not meta["is_trusted_global"]:
+        domain_age_days = await lookup_domain_age_days(ml_res["registered_domain"])
+        if domain_age_days is not None and domain_age_days <= 30:
+            score = min(100, score + 18)
+            reasons_en.append(
+                f"Newly registered domain ({domain_age_days} days old) — strong early-stage fraud signal."
+            )
+            reasons_ar.append(
+                f"نطاق مسجل حديثاً (منذ {domain_age_days} أيام فقط) — مؤشر قوي على موقع احتيال جديد."
+            )
+
+        live = await inspect_live_page(
+            ml_res["meta"]["normalized_url"],
+            ml_res["host"],
+            is_official_uae=meta["is_official_uae"],
+            deep_scan=True,
+        )
+        has_payment_harvest = live["has_payment_harvest"]
+        has_cloaking = live["has_cloaking"]
+        page_title = live["page_title"]
+        if live["score_boost"] > 0:
+            score = min(100, score + live["score_boost"])
+            reasons_en.extend(live["reasons_en"])
+            reasons_ar.extend(live["reasons_ar"])
+
+    score = max(0, min(100, int(score)))
+    if meta["is_official_uae"]:
+        verdict = "SAFE"
+    elif score >= 70:
+        verdict = "FRAUD"
+    elif score >= 40:
+        verdict = "SUSPICIOUS"
+    else:
+        verdict = "SAFE"
+
+    total_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+    payload = {
+        "url": ml_res["url"],
+        "host": ml_res["host"],
+        "registered_domain": ml_res["registered_domain"],
+        "source": req.source,
+        "source_label": req.source_label or page_title,
+        "lat": req.lat,
+        "lng": req.lng,
+        "risk_score": score,
+        "verdict": verdict,
+        "impersonated_brand_en": ml_res["impersonated_brand_en"],
+        "impersonated_brand_ar": ml_res["impersonated_brand_ar"],
+        "verified_entity_en": ml_res["verified_entity_en"],
+        "verified_entity_ar": ml_res["verified_entity_ar"],
+        "reasons_en": reasons_en,
+        "reasons_ar": reasons_ar,
+        "domain_age_days": domain_age_days,
+        "has_payment_harvest": has_payment_harvest,
+        "has_cloaking": has_cloaking,
+        "pii_redacted": ml_res["pii_redacted"],
+        "ml_latency_ms": ml_res["latency_ms"],
+        "latency_ms": total_latency_ms,
+    }
+
+    saved = None
+    if req.save_to_db and (verdict in ("FRAUD", "SUSPICIOUS") or req.source != "manual_scan"):
+        saved = upsert_threat(payload)
+        payload["threat_id"] = saved["id"]
+        payload["status"] = saved["status"]
+    else:
+        payload["threat_id"] = None
+        payload["status"] = "safe"
+
+    return payload
+
+
+@app.get("/api/threats")
+def api_list_threats(
+    source: Optional[str] = Query(None),
+    verdict: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+):
+    return {"threats": list_threats(source=source, verdict=verdict, status=status, limit=limit)}
+
+
+@app.post("/api/threats/{threat_id}/block")
+def api_block_threat(threat_id: int):
+    updated = approve_and_block_threat(threat_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Threat not found")
+    return {"status": "blocked", "threat": updated}
+
+
+@app.post("/api/threats/{threat_id}/dismiss")
+def api_dismiss_threat(threat_id: int):
+    updated = dismiss_threat(threat_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Threat not found")
+    return {"status": "dismissed", "threat": updated}
+
+
+@app.get("/api/threats/{threat_id}/takedown")
+def api_takedown_dossier(threat_id: int):
+    threat = get_threat(threat_id)
+    if not threat:
+        raise HTTPException(status_code=404, detail="Threat not found")
+    return {
+        "dossier_standard": "SCAMSHIELD-TAKEDOWN-V1",
+        "platform": "ScamShield AI Threat Intelligence",
+        "recommended_actions": [
+            "Push domain to ScamShield Mobile Private DNS Blocklist",
+            "Submit ISP block request to telecom providers",
+            "Submit Google Safe Browsing & Google Maps Abuse takedown ticket",
+            "Notify registrar abuse desk for domain suspension",
+        ],
+        "privacy_compliance": {
+            "uae_pdpl_compliant": True,
+            "pii_redacted_before_storage": threat["pii_redacted"],
+            "citizen_identity_stored": False,
+        },
+        "evidence": threat,
+    }
+
+
+@app.get("/api/blocked-domains")
+def api_blocked_domains():
+    return {"blocked_domains": list_blocked_domains()}
+
+
+@app.post("/api/blocked-domains/block")
+def api_direct_block(req: DirectBlockRequest):
+    block_domain_direct(
+        req.domain,
+        reason_en=req.reason_en,
+        reason_ar=req.reason_ar,
+        impersonated_brand=req.impersonated_brand,
+    )
+    return {"status": "blocked", "domain": req.domain}
+
+
+@app.post("/api/blocked-domains/unblock")
+def api_unblock_domain(req: UnblockRequest):
+    removed = unblock_domain(req.domain)
+    return {"status": "unblocked" if removed else "not_found", "domain": req.domain}
+
+
+@app.get("/api/stats")
+def api_stats():
+    stats = get_stats()
+    stats["model_metrics"] = get_model_metrics()
+    return stats
+
+
+@app.post("/api/patrol/run")
+async def api_run_patrol(deep_scan: bool = False):
+    from patrol.patrol_worker import run_patrol_sweep
+    summary = await run_patrol_sweep(deep_scan=deep_scan)
+    return {"status": "completed", "summary": summary}
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_dashboard():
+    if os.path.exists(DASHBOARD_HTML):
+        return FileResponse(DASHBOARD_HTML)
+    return HTMLResponse("<h1>ScamShield AI API Running</h1><p>Dashboard coming in next step.</p>")
+
+
+@app.get("/blocked", response_class=HTMLResponse)
+def serve_block_page():
+    if os.path.exists(BLOCK_PAGE_HTML):
+        return FileResponse(BLOCK_PAGE_HTML)
+    return HTMLResponse("<h1>Blocked by ScamShield AI</h1>")
+
+
+@app.get("/demo-scam", response_class=HTMLResponse)
+def serve_demo_scam():
+    if os.path.exists(DEMO_SCAM_HTML):
+        return FileResponse(DEMO_SCAM_HTML)
+    return HTMLResponse("<h1>Demo Scam Simulation</h1>")
+
