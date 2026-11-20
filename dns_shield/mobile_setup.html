@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ScamShield AI — 1-Tap Mobile Protection Setup</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: #070c17; color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 24px 16px; display: flex; justify-content: center;
+    }
+    .wrap { max-width: 520px; width: 100%; }
+    .hdr { text-align: center; margin-bottom: 22px; }
+    .hdr img { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 10px; box-shadow: 0 10px 30px rgba(56,189,248,0.25); }
+    .hdr h1 { margin: 0 0 4px; font-size: 22px; }
+    .hdr p { margin: 0; font-size: 13.5px; color: #94a3b8; }
+    .ar { direction: rtl; color: #cbd5e1; font-size: 13.5px; margin-top: 4px; }
+    .card {
+      background: #0e1628; border: 1px solid #223254; border-radius: 14px;
+      padding: 18px; margin-bottom: 14px;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 15.5px; }
+    .card p { margin: 0 0 12px; font-size: 13px; color: #94a3b8; line-height: 1.5; }
+    .btn {
+      display: block; width: 100%; text-align: center; text-decoration: none;
+      padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 700;
+      border: none; cursor: pointer;
+    }
+    .btn-primary { background: #0284c7; color: #ffffff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-green { background: #059669; color: #ffffff; }
+    .btn-green:hover { background: #047857; }
+    .btn-outline { background: #142038; color: #e2e8f0; border: 1px solid #223254; }
+    .steps { margin: 10px 0 0; padding-left: 18px; font-size: 12.5px; color: #cbd5e1; line-height: 1.65; }
+    .privacy {
+      text-align: center; font-size: 12px; color: #6ee7b7; margin-top: 16px;
+      padding: 10px; border-radius: 10px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hdr">
+      <img src="/logo.png" alt="ScamShield AI Logo" />
+      <h1>ScamShield AI Mobile Setup</h1>
+      <p>Protect Google Maps, Google Search, Safari, Chrome &amp; SMS in 1 tap</p>
+      <div class="ar">تفعيل الحماية التلقائية للهاتف بضغطة واحدة بدون تطبيقات معقدة</div>
+    </div>
+
+    <div class="card">
+      <h2>Option 1: iPhone &amp; iPad — 1-Tap Auto Profile</h2>
+      <p>No technical setup needed. Tap below to download the official Apple DNS configuration profile, then tap <strong>Allow</strong> and enable it in Settings &rarr; VPN &amp; Device Management.</p>
+      <a class="btn btn-primary" href="/scamshield.mobileconfig">Install 1-Tap iPhone Protection Profile</a>
+    </div>
+
+    <div class="card">
+      <h2>Option 2: Android — Private DNS (10 Seconds)</h2>
+      <p>Protects every app on Android including native Google Maps and Chrome.</p>
+      <button class="btn btn-outline" id="copy-dns" type="button">Copy Private DNS Hostname: dns.scamshield.local</button>
+      <ol class="steps">
+        <li>Open <strong>Settings &rarr; Network &amp; Internet &rarr; Private DNS</strong>.</li>
+        <li>Select <strong>Private DNS provider hostname</strong> and paste.</li>
+        <li>Tap <strong>Save</strong> — automatic protection is now active.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Option 3: Zero Install — Check Any Link on Telegram</h2>
+      <p>Share any suspicious link from Google Maps, Search, WhatsApp, or SMS directly to our AI bot for an instant Safe / Suspicious / Fraud verdict in Arabic &amp; English.</p>
+      <a class="btn btn-green" href="https://t.me/ScamShieldAD_bot" target="_blank" rel="noopener">Open @ScamShieldAD_bot on Telegram</a>
+    </div>
+
+    <div class="privacy">
+      Privacy Guarantee: Zero browsing history logged &bull; Domain-only inspection &bull; Automatic PII redaction
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("copy-dns").addEventListener("click", async () => {
+      await navigator.clipboard.writeText("dns.scamshield.local");
+      const btn = document.getElementById("copy-dns");
+      btn.textContent = "Copied: dns.scamshield.local";
+      setTimeout(() => { btn.textContent = "Copy Private DNS Hostname: dns.scamshield.local"; }, 1800);
+    });
+  </script>
+</body>
+</html>

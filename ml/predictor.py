@@ -147,9 +147,9 @@ def predict_url_fast(raw_url: str) -> Dict:
 
     score = max(0, min(100, score))
 
-    if score >= 70:
+    if score >= 80:
         verdict = "FRAUD"
-    elif score >= 40:
+    elif score >= 35:
         verdict = "SUSPICIOUS"
     else:
         verdict = "SAFE"

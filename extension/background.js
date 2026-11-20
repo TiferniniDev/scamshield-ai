@@ -5,7 +5,7 @@
  */
 const API_BASE = "http://127.0.0.1:8000";
 
-async function analyzeWithBackend(url, source, deepScan, saveToDb) {
+async function analyzeWithBackend(url, source, deepScan, saveToDb, useAi = true) {
   try {
     const resp = await fetch(`${API_BASE}/api/analyze`, {
       method: "POST",
@@ -15,6 +15,7 @@ async function analyzeWithBackend(url, source, deepScan, saveToDb) {
         source,
         source_label: `Browser Pre-Click Guard (${source})`,
         deep_scan: deepScan,
+        use_ai: useAi,
         save_to_db: saveToDb,
       }),
     });

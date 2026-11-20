@@ -43,11 +43,18 @@
     }
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand-mark {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: linear-gradient(135deg, #0284c7, #10b981);
-      display: grid; place-items: center;
-      font-weight: 900; font-size: 16px; color: #ffffff; letter-spacing: -0.02em;
+      width: 40px; height: 40px; border-radius: 10px; overflow: hidden;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.22);
     }
+    .brand-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .bot-toast {
+      display: none; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+      background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #d1fae5; font-size: 13px; font-weight: 600;
+    }
+    .bot-toast.show { display: flex; }
     .brand h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.01em; }
     .brand .sub { font-size: 12px; color: var(--muted); }
     .top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -235,7 +242,7 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">SS</div>
+      <div class="brand-mark"><img src="/logo.png" alt="ScamShield AI" /></div>
       <div>
         <h1>ScamShield AI</h1>
         <div class="sub">Proactive Search, Maps &amp; Mobile Link Defense Platform</div>
@@ -244,12 +251,19 @@
     <div class="top-actions">
       <span class="status-live"><span class="status-dot"></span>Live Protection</span>
       <button class="btn btn-primary" id="btn-patrol" type="button">Run Proactive Scan</button>
+      <a class="btn" href="/mobile-setup" target="_blank" rel="noopener">1-Tap Mobile Setup</a>
       <a class="btn" href="/demo-scam" target="_blank" rel="noopener">Preview Demo Scam</a>
       <a class="btn" href="/blocked" target="_blank" rel="noopener">Preview Block Screen</a>
     </div>
   </header>
 
   <main class="container">
+    <!-- Live Incoming Telegram Bot Alert Banner -->
+    <div class="bot-toast" id="bot-toast" role="status" aria-live="polite">
+      <span id="bot-toast-text">New report received from Telegram Bot.</span>
+      <button class="btn btn-sm" id="btn-view-bot-tab" type="button">View Bot Reports</button>
+    </div>
+
     <!-- Executive Telemetry Row -->
     <section class="kpi-grid" aria-label="Protection Metrics">
       <div class="kpi">
@@ -339,7 +353,7 @@
           <button class="tab" data-filter="patrol_maps" type="button">Maps</button>
           <button class="tab" data-filter="patrol_search" type="button">Search</button>
           <button class="tab" data-filter="patrol_certstream" type="button">New Domains</button>
-          <button class="tab" data-filter="citizen_bot" type="button">Bot Reports</button>
+          <button class="tab" data-filter="citizen_bot" id="tab-bot" type="button">Bot Reports (0)</button>
           <button class="tab" data-filter="blocked" type="button">Blocked</button>
         </div>
         <div class="threat-list" id="threat-list"></div>
@@ -552,6 +566,7 @@
       document.getElementById("kpi-search").textContent = stats.search_threats;
       document.getElementById("kpi-cert").textContent = stats.certstream_early_warnings;
       document.getElementById("kpi-bot").textContent = stats.citizen_bot_reports;
+      document.getElementById("tab-bot").textContent = `Bot Reports (${stats.citizen_bot_reports})`;
       document.getElementById("kpi-dns").textContent = stats.active_dns_blocks;
       document.getElementById("kpi-hits").textContent = stats.mobile_attacks_blocked;
       document.getElementById("kpi-pii").textContent = stats.pii_urls_scrubbed;
@@ -560,14 +575,19 @@
       if (m.avg_latency_ms) {
         document.getElementById("kpi-lat").textContent = `${m.avg_latency_ms}ms`;
       }
+      const aiLayer = stats.gemini_enabled
+        ? "Active (Gemini 2.5 Flash Free Tier — receives PII-scrubbed URLs only)"
+        : "Optional (Add free GEMINI_API_KEY in .env — running 100% local ML)";
       document.getElementById("model-info").innerHTML = `
         <div><strong>Detection Engine:</strong> ${escapeHtml(m.model_type || "Local Ensemble ML")} (${m.avg_latency_ms || 0}ms/URL)</div>
+        <div><strong>Layer-3 AI Analyst:</strong> ${aiLayer}</div>
         <div><strong>Context Intelligence:</strong> Verifies official .gov / .gov.ae domains, trusted news outlets, and official UAE social media handles.</div>
-        <div><strong>Data Sovereignty:</strong> 100% local inference with zero third-party cloud LLM API calls.</div>
         <div><strong>Mobile DNS Privacy:</strong> Domain-only inspection, zero IP logging, zero safe browsing logs (${stats.dns_queries_allowed} safe queries passed privately).</div>
         <div><strong>PII Protection:</strong> Automatically scrubs Emirates IDs, UAE phone numbers, and auth tokens before storage.</div>
       `;
     }
+
+    let lastBotSig = null;
 
     async function refreshAll() {
       try {
@@ -578,6 +598,20 @@
         ]);
         state.threats = thRes.threats || [];
         state.blocked = blRes.blocked_domains || [];
+
+        // Detect live incoming Telegram Bot report and alert operator immediately!
+        const botItems = state.threats.filter((t) => t.source === "citizen_bot");
+        const newestBot = botItems[0];
+        const sig = newestBot ? `${newestBot.id}:${newestBot.report_count}:${newestBot.updated_at}` : "";
+        if (lastBotSig !== null && sig && sig !== lastBotSig) {
+          const toast = document.getElementById("bot-toast");
+          document.getElementById("bot-toast-text").textContent =
+            `Live Telegram Bot report received: ${newestBot.host} (${newestBot.verdict})`;
+          toast.classList.add("show");
+          setTimeout(() => toast.classList.remove("show"), 9000);
+        }
+        lastBotSig = sig;
+
         renderStats(stRes);
         renderThreats();
         renderMap();
@@ -587,6 +621,14 @@
         console.error("Sync failed", e);
       }
     }
+
+    document.getElementById("btn-view-bot-tab").addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document.getElementById("tab-bot").classList.add("active");
+      state.filter = "citizen_bot";
+      renderThreats();
+      document.getElementById("bot-toast").classList.remove("show");
+    });
 
     async function blockThreat(id) {
       await fetch(`/api/threats/${id}/block`, { method: "POST" });
@@ -700,7 +742,7 @@
     });
 
     refreshAll();
-    setInterval(refreshAll, 5000);
+    setInterval(refreshAll, 2500);
   </script>
 </body>
 </html>

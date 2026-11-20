@@ -20,6 +20,7 @@ from telegram.ext import (
 )
 
 from backend.database import approve_and_block_threat, get_stats, init_db, upsert_threat
+from backend.gemini_analyst import analyze_with_gemini, is_gemini_enabled
 from backend.inspector import inspect_live_page, lookup_domain_age_days
 from ml.predictor import get_model, predict_url_fast
 
@@ -50,6 +51,7 @@ async def run_full_check(url: str) -> dict:
     domain_age_days = None
     has_payment_harvest = False
     has_cloaking = False
+    page_title = ""
 
     if not meta["is_official_uae"] and not meta.get("is_official_tld") and not meta["is_trusted_global"]:
         domain_age_days = await lookup_domain_age_days(ml_res["registered_domain"])
@@ -63,6 +65,7 @@ async def run_full_check(url: str) -> dict:
         )
         has_payment_harvest = live["has_payment_harvest"]
         has_cloaking = live["has_cloaking"]
+        page_title = live.get("page_title", "")
         if live["score_boost"] > 0:
             score = min(100, score + live["score_boost"])
             reasons_en.extend(live["reasons_en"])
@@ -71,12 +74,29 @@ async def run_full_check(url: str) -> dict:
     score = max(0, min(100, int(score)))
     if meta["is_official_uae"] or meta.get("is_official_tld"):
         verdict = "SAFE"
-    elif score >= 70:
+    elif score >= 80:
         verdict = "FRAUD"
-    elif score >= 40:
+    elif score >= 35:
         verdict = "SUSPICIOUS"
     else:
         verdict = "SAFE"
+
+    # Optional Layer 3: Free Gemini AI reasoning on privacy-scrubbed URL
+    if is_gemini_enabled() and not meta["is_official_uae"] and not meta.get("is_official_tld"):
+        gem = await analyze_with_gemini(
+            redacted_url=ml_res["url"],
+            host=ml_res["host"],
+            page_title=page_title,
+            local_verdict=verdict,
+            has_payment_harvest=has_payment_harvest,
+            domain_age_days=domain_age_days,
+        )
+        if gem:
+            verdict = gem["verdict"]
+            if gem["reason_en"]:
+                reasons_en.insert(0, f"AI Analysis: {gem['reason_en']}")
+            if gem["reason_ar"]:
+                reasons_ar.insert(0, f"تحليل الذكاء الاصطناعي: {gem['reason_ar']}")
 
     saved = upsert_threat({
         "url": ml_res["url"],

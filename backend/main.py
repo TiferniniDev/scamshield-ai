@@ -28,12 +28,15 @@ from backend.database import (
     unblock_domain,
     upsert_threat,
 )
+from backend.gemini_analyst import analyze_with_gemini, is_gemini_enabled
 from backend.inspector import inspect_live_page, lookup_domain_age_days
 from ml.predictor import get_model, get_model_metrics, predict_url_fast
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DASHBOARD_HTML = os.path.join(PROJECT_ROOT, "dashboard", "index.html")
+DASHBOARD_LOGO = os.path.join(PROJECT_ROOT, "dashboard", "logo.png")
 BLOCK_PAGE_HTML = os.path.join(PROJECT_ROOT, "dns_shield", "block_page.html")
+MOBILE_SETUP_HTML = os.path.join(PROJECT_ROOT, "dns_shield", "mobile_setup.html")
 DEMO_SCAM_HTML = os.path.join(PROJECT_ROOT, "demo_scam_site", "index.html")
 
 app = FastAPI(
@@ -56,6 +59,7 @@ class AnalyzeRequest(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     deep_scan: bool = True
+    use_ai: bool = True
     save_to_db: bool = True
 
 
@@ -126,12 +130,32 @@ async def analyze_url(req: AnalyzeRequest) -> Dict[str, Any]:
     score = max(0, min(100, int(score)))
     if meta["is_official_uae"] or meta.get("is_official_tld"):
         verdict = "SAFE"
-    elif score >= 70:
+    elif score >= 80:
         verdict = "FRAUD"
-    elif score >= 40:
+    elif score >= 35:
         verdict = "SUSPICIOUS"
     else:
         verdict = "SAFE"
+
+    # Optional Layer 3: Free Gemini AI Contextual Reasoning (only receives PII-redacted URL)
+    ai_verified = False
+    if req.use_ai and is_gemini_enabled() and not meta["is_official_uae"] and not meta.get("is_official_tld"):
+        if req.deep_scan or verdict in ("SUSPICIOUS", "FRAUD"):
+            gem = await analyze_with_gemini(
+                redacted_url=ml_res["url"],
+                host=ml_res["host"],
+                page_title=page_title,
+                local_verdict=verdict,
+                has_payment_harvest=has_payment_harvest,
+                domain_age_days=domain_age_days,
+            )
+            if gem:
+                ai_verified = True
+                verdict = gem["verdict"]
+                if gem["reason_en"]:
+                    reasons_en.insert(0, f"AI Analysis: {gem['reason_en']}")
+                if gem["reason_ar"]:
+                    reasons_ar.insert(0, f"تحليل الذكاء الاصطناعي: {gem['reason_ar']}")
 
     total_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
@@ -155,6 +179,7 @@ async def analyze_url(req: AnalyzeRequest) -> Dict[str, Any]:
         "has_payment_harvest": has_payment_harvest,
         "has_cloaking": has_cloaking,
         "pii_redacted": ml_res["pii_redacted"],
+        "ai_verified": ai_verified,
         "ml_latency_ms": ml_res["latency_ms"],
         "latency_ms": total_latency_ms,
     }
@@ -246,6 +271,7 @@ def api_unblock_domain(req: UnblockRequest):
 def api_stats():
     stats = get_stats()
     stats["model_metrics"] = get_model_metrics()
+    stats["gemini_enabled"] = is_gemini_enabled()
     return stats
 
 
@@ -254,6 +280,80 @@ async def api_run_patrol(deep_scan: bool = False):
     from patrol.patrol_worker import run_patrol_sweep
     summary = await run_patrol_sweep(deep_scan=deep_scan)
     return {"status": "completed", "summary": summary}
+
+
+@app.get("/logo.png")
+def serve_logo():
+    if os.path.exists(DASHBOARD_LOGO):
+        return FileResponse(DASHBOARD_LOGO, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Logo not found")
+
+
+@app.get("/mobile-setup", response_class=HTMLResponse)
+def serve_mobile_setup():
+    if os.path.exists(MOBILE_SETUP_HTML):
+        return FileResponse(MOBILE_SETUP_HTML)
+    return HTMLResponse("<h1>ScamShield AI Mobile Setup</h1>")
+
+
+@app.get("/scamshield.mobileconfig")
+def serve_ios_dns_profile(dns_host: str = Query("dns.scamshield.local")):
+    """
+    1-Tap Apple iOS DNS Configuration Profile (.mobileconfig).
+    Allows non-technical iPhone users to activate ScamShield DNS with a single link tap.
+    """
+    from fastapi.responses import Response
+    safe_host = "".join(c for c in dns_host if c.isalnum() or c in ".-") or "dns.scamshield.local"
+    plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>DNSSettings</key>
+      <dict>
+        <key>DNSProtocol</key>
+        <string>HTTPS</string>
+        <key>ServerURL</key>
+        <string>https://{safe_host}/dns-query</string>
+      </dict>
+      <key>PayloadDescription</key>
+      <string>Protects Google Maps, Google Search, Safari, and all apps from fraudulent links with zero browsing logs.</string>
+      <key>PayloadDisplayName</key>
+      <string>ScamShield AI Mobile DNS Protection</string>
+      <key>PayloadIdentifier</key>
+      <string>ai.scamshield.dns.profile.settings</string>
+      <key>PayloadType</key>
+      <string>com.apple.dnsSettings.managed</string>
+      <key>PayloadUUID</key>
+      <string>7F42A01B-6C11-4E21-9A01-SCAMSHIELD01</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+    </dict>
+  </array>
+  <key>PayloadDescription</key>
+  <string>1-Tap ScamShield AI Protection for iPhone &amp; iPad. Domain-only privacy protection with zero browsing history logged.</string>
+  <key>PayloadDisplayName</key>
+  <string>ScamShield AI Protection</string>
+  <key>PayloadIdentifier</key>
+  <string>ai.scamshield.dns.profile</string>
+  <key>PayloadOrganization</key>
+  <string>ScamShield AI</string>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>7F42A01B-6C11-4E21-9A01-SCAMSHIELD00</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
+"""
+    return Response(
+        content=plist,
+        media_type="application/x-apple-aspen-config",
+        headers={"Content-Disposition": 'attachment; filename="ScamShield-AI-iOS-Protection.mobileconfig"'},
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
