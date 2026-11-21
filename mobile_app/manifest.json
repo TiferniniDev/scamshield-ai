@@ -1,0 +1,26 @@
+{
+  "name": "ScamShield AI",
+  "short_name": "ScamShield",
+  "description": "1-Tap Mobile Link & Maps Protection against online financial fraud.",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/app",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

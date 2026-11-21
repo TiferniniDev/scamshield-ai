@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ScamShield" />
+  <link rel="manifest" href="/mobile-manifest.json" />
+  <link rel="apple-touch-icon" href="/logo.png" />
+  <title>ScamShield AI — Mobile Protection App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #ffffff;
+      --fg: #09090b;
+      --secondary: #f4f4f5;
+      --muted: #71717a;
+      --border: #e4e4e7;
+      --primary: #18181b;
+      --safe-bg: #ecfdf5; --safe-bd: #a7f3d0; --safe-fg: #047857; --safe-dot: #10b981;
+      --susp-bg: #fffbeb; --susp-bd: #fde68a; --susp-fg: #b45309; --susp-dot: #f59e0b;
+      --fraud-bg: #fef2f2; --fraud-bd: #fecaca; --fraud-fg: #b91c1c; --fraud-dot: #ef4444;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; background: #f1f5f9; color: var(--fg);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex; justify-content: center; min-height: 100vh;
+    }
+    .phone-shell {
+      width: 100%; max-width: 440px; min-height: 100vh;
+      background: var(--bg); display: flex; flex-direction: column;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+
+    /* App Header */
+    .app-header {
+      background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .app-brand { display: flex; align-items: center; gap: 10px; }
+    .app-brand img { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border); }
+    .app-brand h1 { margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; }
+    .app-brand span { font-size: 11.5px; color: var(--muted); display: block; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .st-safe { background: var(--safe-bg); border: 1px solid var(--safe-bd); color: var(--safe-fg); }
+    .st-safe .pill-dot { background: var(--safe-dot); }
+    .st-susp { background: var(--susp-bg); border: 1px solid var(--susp-bd); color: var(--susp-fg); }
+    .st-susp .pill-dot { background: var(--susp-dot); }
+    .st-fraud { background: var(--fraud-bg); border: 1px solid var(--fraud-bd); color: var(--fraud-fg); }
+    .st-fraud .pill-dot { background: var(--fraud-dot); }
+    .st-off { background: var(--secondary); border: 1px solid var(--border); color: var(--muted); }
+    .st-off .pill-dot { background: #a1a1aa; }
+
+    /* Content Pages */
+    .content { flex: 1; padding: 16px 16px 86px; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .card-title { font-size: 14px; font-weight: 600; margin: 0 0 3px; }
+    .card-desc { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+
+    /* Giant 1-Tap Protection Switch */
+    .shield-hero { text-align: center; padding: 22px 16px; }
+    .power-btn {
+      width: 112px; height: 112px; border-radius: 50%; margin: 0 auto 14px;
+      border: 4px solid var(--safe-bd); background: var(--safe-bg); color: var(--safe-fg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s ease;
+      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.08);
+      font-family: inherit;
+    }
+    .power-btn.off {
+      border-color: var(--border); background: var(--secondary); color: var(--muted);
+      box-shadow: none;
+    }
+    .power-btn .state-txt { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+    .power-btn .tap-txt { font-size: 11px; margin-top: 2px; opacity: 0.8; }
+    .hero-title { font-size: 17px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .hero-sub { font-size: 12.5px; color: var(--muted); margin: 0; }
+    .hero-ar { direction: rtl; font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+    /* Protected Apps Grid */
+    .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .app-chip {
+      border: 1px solid var(--border); border-radius: 9px; padding: 10px 8px;
+      text-align: center; background: #fcfcfd;
+    }
+    .app-chip strong { display: block; font-size: 12px; font-weight: 600; }
+    .app-chip span { font-size: 10.5px; color: var(--safe-fg); font-weight: 600; }
+    .app-chip.paused span { color: var(--muted); }
+
+    /* Interactive Demo Links */
+    .sim-list { display: flex; flex-direction: column; gap: 8px; }
+    .sim-item {
+      width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 11px 12px; cursor: pointer; font-family: inherit;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .sim-item:hover { background: var(--secondary); border-color: #d4d4d8; }
+    .sim-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .sim-src { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .sim-tap { font-size: 11px; color: var(--fg); font-weight: 600; }
+    .sim-msg { font-size: 12.5px; color: var(--fg); margin-bottom: 3px; }
+    .sim-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #2563eb; word-break: break-all; }
+
+    /* Inputs & Buttons */
+    .input {
+      width: 100%; height: 40px; padding: 0 12px; border-radius: 8px;
+      border: 1px solid var(--border); font-family: inherit; font-size: 13.5px;
+      color: var(--fg); background: var(--card); margin-bottom: 10px;
+    }
+    .input:focus { outline: none; border-color: var(--primary); }
+    .btn {
+      width: 100%; height: 40px; border-radius: 8px; font-family: inherit;
+      font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+    .btn-danger { background: var(--fraud-bg); border-color: var(--fraud-bd); color: var(--fraud-fg); }
+    .btn-safe { background: var(--safe-bg); border-color: var(--safe-bd); color: var(--safe-fg); }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed; bottom: 0; width: 100%; max-width: 440px;
+      background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 10px; gap: 6px;
+      z-index: 60;
+    }
+    .nav-btn {
+      background: transparent; border: none; border-radius: 8px; padding: 8px 4px;
+      font-family: inherit; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer;
+    }
+    .nav-btn.active { background: var(--secondary); color: var(--fg); font-weight: 600; }
+
+    /* Mobile Intercept Bottom Sheet */
+    .sheet-backdrop {
+      position: fixed; inset: 0; background: rgba(9, 9, 11, 0.45);
+      display: none; align-items: flex-end; justify-content: center; z-index: 100;
+    }
+    .sheet-backdrop.open { display: flex; }
+    .sheet {
+      width: 100%; max-width: 440px; background: var(--card);
+      border-top-left-radius: 18px; border-top-right-radius: 18px;
+      padding: 18px 18px 24px; border-top: 1px solid var(--border);
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.16);
+    }
+    .sheet-handle { width: 38px; height: 4px; background: #d4d4d8; border-radius: 99px; margin: 0 auto 14px; }
+    .ar { direction: rtl; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="phone-shell">
+    <header class="app-header">
+      <div class="app-brand">
+        <img src="/logo.png" alt="ScamShield AI" />
+        <div>
+          <h1>ScamShield AI</h1>
+          <span>Mobile Link Protection</span>
+        </div>
+      </div>
+      <span class="pill st-safe" id="hdr-status"><span class="pill-dot"></span>Protected</span>
+    </header>
+
+    <main class="content">
+      <!-- TAB 1: SHIELD HOME -->
+      <section class="page active" id="page-shield">
+        <div class="card shield-hero">
+          <button class="power-btn" id="power-btn" type="button" aria-pressed="true">
+            <span class="state-txt" id="power-state">ON</span>
+            <span class="tap-txt">Tap to pause</span>
+          </button>
+          <h2 class="hero-title" id="hero-title">Automatic Protection Enabled</h2>
+          <p class="hero-sub" id="hero-sub">Every link tapped in WhatsApp, SMS, Google Maps, Chrome &amp; Safari is checked before opening.</p>
+          <div class="hero-ar" id="hero-ar">الحماية التلقائية مفعّلة لجميع الروابط في واتساب والرسائل وخرائط جوجل والمتصفح</div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Protected Mobile Apps</h3>
+          <p class="card-desc">No manual DNS configuration required for everyday users.</p>
+          <div class="apps-grid" id="apps-grid">
+            <div class="app-chip"><strong>WhatsApp</strong><span>Active</span></div>
+            <div class="app-chip"><strong>SMS</strong><span>Active</span></div>
+            <div class="app-chip"><strong>Google Maps</strong><span>Active</span></div>
+            <div class="app-chip"><strong>Google Search</strong><span>Active</span></div>
+            <div class="app-chip"><strong>Safari</strong><span>Active</span></div>
+            <div class="app-chip"><strong>Chrome</strong><span>Active</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Try Live Link Interception</h3>
+          <p class="card-desc">Tap any simulated mobile link below to see ScamShield check it live before opening.</p>
+          <div class="sim-list">
+            <button class="sim-item" type="button" data-src="WhatsApp" data-url="https://adpolice-fines-pay.test/pay/traffic-fine?eid=784-1990-1234567-1">
+              <div class="sim-top"><span class="sim-src">WhatsApp Message</span><span class="sim-tap">Tap Link &rarr;</span></div>
+              <div class="sim-msg">"Urgent: Pay your Abu Dhabi traffic fine today for 50% off"</div>
+              <div class="sim-url">https://adpolice-fines-pay.test/pay/traffic-fine?eid=784-...</div>
+            </button>
+
+            <button class="sim-item" type="button" data-src="Google Maps" data-url="https://abudhabi-car-rental-deposit.click/checkout/booking">
+              <div class="sim-top"><span class="sim-src">Google Maps Website Button</span><span class="sim-tap">Tap Link &rarr;</span></div>
+              <div class="sim-msg">Corniche Luxury Car Rental — Website Link</div>
+              <div class="sim-url">https://abudhabi-car-rental-deposit.click/checkout/booking</div>
+            </button>
+
+            <button class="sim-item" type="button" data-src="SMS" data-url="https://www.instagram.com/adpolice_fines_pay/">
+              <div class="sim-top"><span class="sim-src">SMS / Social Link</span><span class="sim-tap">Tap Link &rarr;</span></div>
+              <div class="sim-msg">Unverified social profile offering fine discounts</div>
+              <div class="sim-url">https://www.instagram.com/adpolice_fines_pay/</div>
+            </button>
+
+            <button class="sim-item" type="button" data-src="Google Search" data-url="https://abudhabipolice.gov.ae/en/services">
+              <div class="sim-top"><span class="sim-src">Google Search Result</span><span class="sim-tap">Tap Link &rarr;</span></div>
+              <div class="sim-msg">Official Abu Dhabi Police Government Portal</div>
+              <div class="sim-url">https://abudhabipolice.gov.ae/en/services</div>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: MANUAL LINK CHECK -->
+      <section class="page" id="page-check">
+        <div class="card">
+          <h3 class="card-title">Check Any Link Manually</h3>
+          <p class="card-desc">Paste a URL from WhatsApp, SMS, Google Maps, or Instagram to verify before opening.</p>
+          <form id="manual-form">
+            <input class="input" id="manual-url" type="text" placeholder="https://example.com" required />
+            <button class="btn btn-primary" type="submit" id="manual-btn">Check Link Now</button>
+          </form>
+        </div>
+        <div class="card" id="manual-result" style="display:none;"></div>
+      </section>
+
+      <!-- TAB 3: ADVANCED (DNS + BOT) -->
+      <section class="page" id="page-advanced">
+        <div class="card">
+          <h3 class="card-title">System-Level Private DNS (Advanced)</h3>
+          <p class="card-desc">For power users or enterprise devices that prefer OS-level DNS-over-HTTPS blocking without keeping the app open.</p>
+          <a class="btn btn-primary" href="/scamshield.mobileconfig" style="margin-bottom:8px;">Install 1-Tap iOS DNS Profile</a>
+          <a class="btn" href="/mobile-setup" target="_blank" rel="noopener">Open Full DNS Setup Guide</a>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Telegram Share-to-Check Bot</h3>
+          <p class="card-desc">Prefer zero app install? Forward any suspicious message directly to our Telegram bot.</p>
+          <a class="btn btn-safe" href="https://t.me/ScamShieldAD_bot" target="_blank" rel="noopener">Open @ScamShieldAD_bot</a>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Privacy Guarantee</h3>
+          <p class="card-desc" style="margin-bottom:0;">Zero browsing history stored. Emirates IDs, phone numbers, and tokens are stripped automatically before analysis.</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Tab Bar -->
+    <nav class="bottom-nav" aria-label="App Navigation">
+      <button class="nav-btn active" data-tab="shield" type="button">Shield</button>
+      <button class="nav-btn" data-tab="check" type="button">Check Link</button>
+      <button class="nav-btn" data-tab="advanced" type="button">Advanced</button>
+    </nav>
+  </div>
+
+  <!-- Native-Style Intercept Bottom Sheet -->
+  <div class="sheet-backdrop" id="sheet-backdrop">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Link Safety Check">
+      <div class="sheet-handle"></div>
+      <div id="sheet-body"></div>
+    </div>
+  </div>
+
+  <script>
+    let protectionOn = true;
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function verdictBadge(verdict) {
+      if (verdict === "FRAUD") return `<span class="pill st-fraud"><span class="pill-dot"></span>Fraud — Blocked</span>`;
+      if (verdict === "SUSPICIOUS") return `<span class="pill st-susp"><span class="pill-dot"></span>Suspicious — Caution</span>`;
+      return `<span class="pill st-safe"><span class="pill-dot"></span>Safe — Verified</span>`;
+    }
+
+    // 1-Tap Big Protection Switch
+    const powerBtn = document.getElementById("power-btn");
+    powerBtn.addEventListener("click", () => {
+      protectionOn = !protectionOn;
+      powerBtn.classList.toggle("off", !protectionOn);
+      powerBtn.setAttribute("aria-pressed", String(protectionOn));
+      document.getElementById("power-state").textContent = protectionOn ? "ON" : "OFF";
+      powerBtn.querySelector(".tap-txt").textContent = protectionOn ? "Tap to pause" : "Tap to enable";
+
+      const hdr = document.getElementById("hdr-status");
+      hdr.className = protectionOn ? "pill st-safe" : "pill st-off";
+      hdr.innerHTML = `<span class="pill-dot"></span>${protectionOn ? "Protected" : "Paused"}`;
+
+      document.getElementById("hero-title").textContent = protectionOn
+        ? "Automatic Protection Enabled"
+        : "Protection Is Paused";
+      document.getElementById("hero-sub").textContent = protectionOn
+        ? "Every link tapped in WhatsApp, SMS, Google Maps, Chrome & Safari is checked before opening."
+        : "Tap the button above to automatically intercept suspicious links across your mobile apps.";
+
+      document.querySelectorAll("#apps-grid .app-chip").forEach((c) => {
+        c.classList.toggle("paused", !protectionOn);
+        c.querySelector("span").textContent = protectionOn ? "Active" : "Paused";
+      });
+    });
+
+    // Bottom Navigation
+    document.querySelectorAll(".nav-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(`page-${btn.dataset.tab}`).classList.add("active");
+      });
+    });
+
+    // Bottom Sheet Helper
+    const backdrop = document.getElementById("sheet-backdrop");
+    const sheetBody = document.getElementById("sheet-body");
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.remove("open");
+    });
+
+    async function interceptLink(url, appSource) {
+      backdrop.classList.add("open");
+      if (!protectionOn) {
+        sheetBody.innerHTML = `
+          <div style="margin-bottom:10px;"><span class="pill st-off"><span class="pill-dot"></span>Shield Paused</span></div>
+          <h3 style="margin:0 0 6px; font-size:16px;">Protection is currently OFF</h3>
+          <p style="margin:0 0 14px; font-size:13px; color:var(--muted);">Turn Protection ON on the Shield tab so ScamShield automatically checks ${escapeHtml(appSource)} links before they open.</p>
+          <button class="btn btn-primary" onclick="document.getElementById('sheet-backdrop').classList.remove('open')">Close</button>
+        `;
+        return;
+      }
+
+      sheetBody.innerHTML = `
+        <div style="text-align:center; padding:18px 0;">
+          <div style="font-weight:600; font-size:15px; margin-bottom:6px;">Checking ${escapeHtml(appSource)} link...</div>
+          <div class="mono">${escapeHtml(url)}</div>
+        </div>
+      `;
+
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          source: "citizen_bot",
+          source_label: `Mobile App Intercept (${appSource})`,
+          deep_scan: true,
+          use_ai: true,
+          save_to_db: true,
+        }),
+      }).then((r) => r.json());
+
+      const actionHtml = res.verdict === "FRAUD"
+        ? `
+          <button class="btn btn-danger" style="margin-bottom:8px;" onclick="blockAndClose(${res.threat_id})">Block For All Users &amp; Stay Safe</button>
+          <button class="btn" onclick="document.getElementById('sheet-backdrop').classList.remove('open')">Close</button>
+        `
+        : res.verdict === "SUSPICIOUS"
+          ? `
+            <button class="btn btn-primary" style="margin-bottom:8px;" onclick="document.getElementById('sheet-backdrop').classList.remove('open')">Go Back to Safety</button>
+            <a class="btn" href="${escapeHtml(res.url)}" target="_blank" rel="noopener">Proceed Anyway (Caution)</a>
+          `
+          : `
+            <a class="btn btn-safe" style="margin-bottom:8px;" href="${escapeHtml(res.url)}" target="_blank" rel="noopener">Continue Safely to Website</a>
+            <button class="btn" onclick="document.getElementById('sheet-backdrop').classList.remove('open')">Close</button>
+          `;
+
+      sheetBody.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          ${verdictBadge(res.verdict)}
+          <span style="font-size:11.5px; color:var(--muted);">From ${escapeHtml(appSource)}</span>
+        </div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px;">${escapeHtml(res.host)}</div>
+        ${res.pii_redacted ? `<div style="margin:6px 0;"><span class="pill st-safe">Privacy: Personal info auto-scrubbed</span></div>` : ""}
+        <div style="font-size:13px; color:#27272a; margin-top:8px;">${escapeHtml((res.reasons_en && res.reasons_en[0]) || "")}</div>
+        <div class="ar">${escapeHtml((res.reasons_ar && res.reasons_ar[0]) || "")}</div>
+        <div style="margin-top:16px;">${actionHtml}</div>
+      `;
+    }
+
+    async function blockAndClose(threatId) {
+      if (threatId) {
+        await fetch(`/api/threats/${threatId}/block`, { method: "POST" });
+      }
+      sheetBody.innerHTML = `
+        <div style="text-align:center; padding:12px 0;">
+          <span class="pill st-safe" style="margin-bottom:10px;"><span class="pill-dot"></span>Blocked Globally</span>
+          <h3 style="margin:6px 0; font-size:16px;">You Are Protected</h3>
+          <p style="margin:0 0 14px; font-size:13px; color:var(--muted);">This domain has been pushed live to the ScamShield Dashboard and Mobile Blocklist.</p>
+          <button class="btn btn-primary" onclick="document.getElementById('sheet-backdrop').classList.remove('open')">Done</button>
+        </div>
+      `;
+    }
+
+    document.querySelectorAll(".sim-item").forEach((item) => {
+      item.addEventListener("click", () => interceptLink(item.dataset.url, item.dataset.src));
+    });
+
+    // Manual Check Tab
+    document.getElementById("manual-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const url = document.getElementById("manual-url").value.trim();
+      if (!url) return;
+      await interceptLink(url, "Manual Check");
+    });
+
+    // Handle Android PWA Share Target (?url= or ?text=)
+    const params = new URLSearchParams(window.location.search);
+    const shared = params.get("url") || params.get("text");
+    if (shared && shared.includes("http")) {
+      interceptLink(shared, "Shared Link");
+    }
+  </script>
+</body>
+</html>

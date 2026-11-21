@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ai.scamshield.mobile">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="ScamShield AI"
+        android:usesCleartextTraffic="false">
+
+        <!-- Intercepts tapped HTTP/HTTPS links from WhatsApp, SMS, and Google Maps before Chrome opens -->
+        <activity
+            android:name=".LinkInterceptorActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.Dialog">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+        </activity>
+
+        <!-- Local On-Device VpnService for 1-Tap System-Wide DNS Shield (zero manual DNS settings) -->
+        <service
+            android:name=".LocalDnsVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

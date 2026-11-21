@@ -41,6 +41,8 @@ DASHBOARD_HTML = os.path.join(PROJECT_ROOT, "dashboard", "index.html")
 DASHBOARD_LOGO = os.path.join(PROJECT_ROOT, "dashboard", "logo.png")
 BLOCK_PAGE_HTML = os.path.join(PROJECT_ROOT, "dns_shield", "block_page.html")
 MOBILE_SETUP_HTML = os.path.join(PROJECT_ROOT, "dns_shield", "mobile_setup.html")
+MOBILE_APP_HTML = os.path.join(PROJECT_ROOT, "mobile_app", "index.html")
+MOBILE_MANIFEST_JSON = os.path.join(PROJECT_ROOT, "mobile_app", "manifest.json")
 DEMO_SCAM_HTML = os.path.join(PROJECT_ROOT, "demo_scam_site", "index.html")
 
 app = FastAPI(
@@ -298,6 +300,20 @@ def serve_mobile_setup():
     if os.path.exists(MOBILE_SETUP_HTML):
         return FileResponse(MOBILE_SETUP_HTML)
     return HTMLResponse("<h1>ScamShield AI Mobile Setup</h1>")
+
+
+@app.get("/app", response_class=HTMLResponse)
+def serve_mobile_app():
+    if os.path.exists(MOBILE_APP_HTML):
+        return FileResponse(MOBILE_APP_HTML)
+    return HTMLResponse("<h1>ScamShield AI Mobile App</h1>")
+
+
+@app.get("/mobile-manifest.json")
+def serve_mobile_manifest():
+    if os.path.exists(MOBILE_MANIFEST_JSON):
+        return FileResponse(MOBILE_MANIFEST_JSON, media_type="application/manifest+json")
+    raise HTTPException(status_code=404, detail="Manifest not found")
 
 
 def _resolve_doh_wire(raw_wire: bytes) -> bytes:
