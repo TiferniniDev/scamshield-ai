@@ -92,3 +92,4 @@ class LinkInterceptorActivity : Activity() {
         finish()
     }
 }
+
