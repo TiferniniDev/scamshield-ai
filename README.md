@@ -50,12 +50,13 @@ Online financial fraud in the UAE increasingly exploits **high-trust discovery s
 ### Reasoning Behind Our Technical Choices
 | Layer | Choice | Why We Chose It |
 | :--- | :--- | :--- |
-| **Core AI Model** | Local Soft-Voting Ensemble (**RandomForest + GradientBoosting**, 24 lexical/entropy/homoglyph/brand features via `scikit-learn`) | Runs in **~32ms/URL** on CPU with **zero external cloud LLM API calls**—ensuring UAE data sovereignty, zero latency bottlenecks at the DNS/browser layer, and full explainability. |
-| **Context-Aware Brand & Social Verification** | Curated **22-entity UAE Registry** (`ml/uae_brands.json`) with official domains **and** verified social media handles (`@adpolicehq`, `@tammabudhabi`, `@uaepass_ae`, etc.) | Prevents false positives on legitimate verified social accounts (e.g., `instagram.com/adpolicehq`), UAE news outlets (`gulfnews.com`), and App Store listings while still catching unverified impersonator handles and spoofed domains. |
-| **Multi-Stage Cascade** | Fast ML filter (<35ms) at DNS & Browser Extension layers; deeper **RDAP domain-age + Mobile Safari DOM Payment/Cloaking Inspector** on suspicious candidates | Balances speed (instant pre-click badges & DNS resolution) with depth (catching card/CVV/OTP/Emirates ID forms and mobile-only cloaking). |
-| **Mobile Protection** | **Private DNS Shield (`dnslib`) + Telegram Share-to-Check Bot** | Desktop extensions cannot inspect native iOS/Android Google Maps apps. Private DNS intercepts malicious domains **across every mobile app** with zero battery drain, while Telegram gives zero-install verification on any phone. |
-| **Storage & Stack** | **FastAPI + SQLite (WAL mode) + Leaflet/OpenStreetMap** | Single-command local deployment (`./run.sh`), zero paid API keys, zero external DB servers, concurrent reads/writes across Patrol, Bot, DNS, and Dashboard. |
-| **Privacy-by-Design** | **Automatic PII URL Redaction** + **Zero DNS Browsing Logs** | Strips Emirates IDs (`784-...`), UAE phone numbers (`+971`/`05...`), emails, and long auth tokens before saving any URL; DNS resolver inspects domains only and stores strictly anonymous aggregate counters. |
+| **Core AI Model (Stage 1)** | Local Soft-Voting Ensemble (**RandomForest + GradientBoosting**, 24 host-focused lexical/entropy/homoglyph/brand features via `scikit-learn`) | Runs in **~32ms/URL** on CPU with zero cloud dependency—fast enough for real-time DNS and pre-click Google Search/Maps badges. |
+| **Context-Aware Brand, `.gov` & Social Verification** | Curated **22-entity UAE Registry** (`ml/uae_brands.json`) + restricted `.gov.ae` / `.gov` / `.edu` TLD verification + verified official social handles (`@adpolicehq`, `@tammabudhabi`, etc.) | Eliminates false positives on legitimate government portals (`abudhabipolice.gov.ae`), major newspapers (`timesofindia.indiatimes.com`), and verified social accounts (`instagram.com/adpolicehq`) while catching impersonators. |
+| **Deep Inspector & Layer-3 AI (Stages 2–3)** | **RDAP domain-age + Mobile Safari DOM Payment/Cloaking Inspector** + optional **Gemini 3.1 Flash Lite** (`backend/gemini_analyst.py`) | Detects unverified card/CVV/OTP/Emirates ID forms, mobile cloaking, and adds optional bilingual LLM reasoning on **already PII-redacted** URLs (gracefully falls back to 100% local ML offline). |
+| **Mobile Protection (Everyday + Advanced)** | **1-Tap Mobile Companion App (`/app` PWA)** + **Native Android Link Interceptor (`/android_app`)** + **Telegram Share-to-Check Bot** + **Private DNS / DoH Shield (`/dns-query` & `.mobileconfig`)** | Normal non-technical users toggle protection with 1 button (no manual DNS typing), while power users & IT admins can deploy OS-level Private DNS / DoH across native Google Maps, Search, Safari, Chrome, WhatsApp, and SMS. |
+| **Pre-Click Browser Guard** | **Manifest V3 Chrome Extension (`/extension`)** | Unwraps organic and **Sponsored Google Search & Google Maps ad redirects (`/aclk?adurl=`)** to display clean **Safe / Suspicious / Fraud** pills before clicking (no cluttered numeric scores). |
+| **Storage & UI** | **FastAPI + SQLite (WAL mode) + Light `shadcn/ui` Dashboard + Free OpenStreetMap** | Single-command startup (`./run.sh`), zero paid API keys, persistent map popups, 2.5s live Bot toast notifications, and standardized JSON Takedown Dossiers. |
+| **Privacy-by-Design** | **Automatic PII URL Redaction** + **Zero DNS Browsing Logs** | Strips Emirates IDs (`784-...`), UAE phone numbers (`+971`/`05...`), emails, and auth tokens before storage; DNS/DoH inspects domains only with zero IP or benign browsing history logged. |
 
 ### Trade-Offs & What We Left Out (Honest MVP Scope)
 * **Training Data:** For rapid, reproducible hackathon training without scraping instability, the MVP ML model was trained on a balanced 3,840-URL corpus combining official UAE/global domains with synthetic UAE-tailored phishing patterns (impersonation, homoglyphs, cloud hosting abuse, Maps hijacks). In production, we would continuously retrain on live verified feeds (**PhishTank, OpenPhish, URLhaus, Tranco**) with adversarial hard negatives.
@@ -97,7 +98,10 @@ chmod +x run.sh
 2. Trains the local ML model (`ml/scam_model.joblib`) if not already present.
 3. Runs an initial proactive Abu Dhabi patrol sweep (`patrol/patrol_worker.py`).
 4. Launches:
-   * **ScamShield Command Center Dashboard:** http://127.0.0.1:8000
+   * **ScamShield Command Center Dashboard (Light `shadcn/ui`):** http://127.0.0.1:8000
+   * **1-Tap Mobile Companion App (Installable PWA):** http://127.0.0.1:8000/app
+   * **1-Tap iOS/Android Advanced DNS Setup:** http://127.0.0.1:8000/mobile-setup
+   * **DNS-over-HTTPS (RFC 8484) Endpoint:** http://127.0.0.1:8000/dns-query
    * **Mobile DNS Block Warning Page Preview:** http://127.0.0.1:8000/blocked
    * **Safe Synthetic Demo Scam Page:** http://127.0.0.1:8000/demo-scam
    * **Mobile DNS Shield Server:** UDP port `1053` *(local non-root default)*
@@ -151,14 +155,24 @@ scamshield-ai/
 │   └── block_page.html        # Bilingual (EN/AR) mobile warning screen
 ├── bot/
 │   └── telegram_bot.py        # #3 Citizen "Share-to-Check" Telegram Bot
-├── extension/                 # #4 Manifest V3 Pre-Click Chrome Extension for Search & Maps
+├── mobile_app/
+│   ├── index.html             # 1-Tap Mobile Companion App (Light shadcn PWA for iOS & Android)
+│   └── manifest.json          # PWA Web App Manifest + Android Share Target
+├── android_app/
+│   ├── AndroidManifest.xml    # Native Android ACTION_VIEW interceptor + VpnService declaration
+│   ├── LinkInterceptorActivity.kt # Native Kotlin pre-click interceptor for WhatsApp/SMS/Maps
+│   └── README.md
+├── extension/                 # #4 Manifest V3 Pre-Click Chrome Extension (Search, Maps & Sponsored Ads)
 ├── dashboard/
-│   └── index.html             # Live Command Center (Abu Dhabi Map, Triage Queue, DNS Controls)
+│   ├── index.html             # Light shadcn/ui Command Center (Abu Dhabi Map, Live Bot Toast, DNS Controls)
+│   └── logo.png               # Custom ScamShield AI logo
 ├── demo_scam_site/
 │   └── index.html             # Safe, watermarked mock UAE traffic-fine scam page for testing
 ├── docs/
+│   ├── ScamShield_AI_Pitch.pptx       # Ready-to-present 9-slide Pitch Deck
 │   ├── TECHNICAL_AND_PRIVACY_DESIGN.md
-│   └── PPT_SLIDE_DECK_SCRIPT.md
+│   ├── PPT_SLIDE_DECK_SCRIPT.md
+│   └── scamshield_logo.png
 ├── run.sh                     # One-command full-stack launcher
 ├── requirements.txt
 └── .env.example
